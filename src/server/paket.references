@@ -1,0 +1,9 @@
+group server
+
+	FSharp.Core
+	Microsoft.AspNetCore
+	Microsoft.AspNetCore.StaticFiles
+	Microsoft.AspNetCore.WebSockets
+    jose-jwt
+    TaskBuilder.fs
+    Thoth.Json.Net

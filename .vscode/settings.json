@@ -1,0 +1,30 @@
+{
+	"editor.fontSize": 12
+	, "editor.formatOnSave": false
+	, "files.exclude": {
+		".config/": true
+		, ".fable/": true
+		, ".fake/": true
+		, ".paket/": true
+		, "node_modules": true
+		, "packages/": true
+		, "paket-files/": true
+		, "publish/": true
+		, "src/**/bin/": true
+        , "src/**/obj/": true
+        , "src/**/*.js": true
+        , "src/server/persisted/": true
+        , "src/server/secret/": true
+        , "src/server/web.config": true
+		, "src/ui/publish/": true
+        , "arm-template.json": true
+        , "deploy.zip": true
+		, "LICENSE": true
+		, "paket.lock": true
+		, "yarn-error.log": true
+		, "yarn.lock": true
+	}
+	,
+	"FSharp.suggestGitignore": false,
+	"FSharp.suggestSdkScripts": false
+}

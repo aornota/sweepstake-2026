@@ -1,0 +1,141 @@
+/* Note: Some --{colour} variables correspond to $colour/s defined in sweepstake-2024-bulma.sass (e.g. --dark corresponds to $dark); others do not. */
+:root {
+    --info: #2080af ; --success: #208f40 ; --warning: #ef800f ; --danger: #ff2040 ;
+    --dark: #444444 ; --darker: #3c3c3c ; --even-darker: #343434 ; --darkest: #2c2c2c ;
+    --light: #c3c3c3 ; --lighter: #d1d1d1 ; --even-lighter: #dfdfdf ; --lightest: #ededed ;
+    --black: black ; --white: white ;
+    --link-external-light: #105010 ; --link-external-light-hover: #209040 ; --link-external-dark: #70efbf ; --link-external-dark-hover: #40bf8f ;
+    --link-internal-light: #6030ff ; --link-internal-light-hover: #c040ff ; --link-internal-dark: #ffbfdf ; --link-internal-dark-hover: #cf8faf ;
+    --link-markdown-light: #2000ff ; --link-markdown-light-hover: #4080ff ; --link-markdown-dark: #af8fdf; --link-markdown-dark-hover: #7f5faf ;
+    --neutral: #808080 ; --neutral-darker: #777777 ; --neutral-lighter: #898989 }
+
+html { height: 100% ; margin: 0px }
+
+body { min-height: 100% ; margin: 0px }
+body.light { background-color: var(--white) }
+body.dark { background-color: var(--black) }
+
+hr { margin-top: 0.75rem ; margin-bottom: 0.75rem }
+hr.light { background-color: var(--light) }
+hr.light-alternative { background-color: var(--even-lighter) }
+hr.dark { background-color: var(--dark) }
+hr.dark-alternative { background-color: var(--even-darker) }
+
+div.centered /* sic */ { display : flex ; justify-content : center }
+
+strong { color: currentColor }
+.content table thead th { color: currentColor }
+.label { color: currentColor }
+.select select { color: currentColor }
+
+.footer.light, .input.light, .modal-card-body.light, .table.light, .textarea.light { background-color: var(--white) }
+.footer.dark, .input.dark, .modal-card-body.dark, .table.dark, .textarea.dark { background-color: var(--black) }
+.select.light select { background-color: var(--white) }
+.select.dark select { background-color: var(--black) }
+
+.light { color: var(--darkest) }
+.light a.external { color: var(--link-external-light) }
+.light a.external:hover { color: var(--link-external-light-hover) }
+.light a.internal { color: var(--link-internal-light) }
+.light a.internal:hover { color: var(--link-internal-light-hover) }
+.light .notification a.external:not(.button):not(.dropdown-item) { color: var(--link-external-light) }
+.light .notification a.external:not(.button):not(.dropdown-item):hover { color: var(--link-external-light-hover) }
+.light .notification a.internal:not(.button):not(.dropdown-item) { color: var(--link-internal-light) }
+.light .notification a.internal:not(.button):not(.dropdown-item):hover { color: var(--link-internal-light-hover) }
+.light table thead th { color : var(--darkest) }
+.light-alternative { color: var(--black) ; background-color: var(--light) }
+
+.dark { color : var(--lightest) }
+.dark a.external { color: var(--link-external-dark) }
+.dark a.external:hover { color: var(--link-external-dark-hover) }
+.dark a.internal { color: var(--link-internal-dark) }
+.dark a.internal:hover { color: var(--link-internal-dark-hover) }
+.dark .notification a.external:not(.button):not(.dropdown-item) { color: var(--link-external-dark) }
+.dark .notification a.external:not(.button):not(.dropdown-item):hover { color: var(--link-external-dark-hover) }
+.dark .notification a.internal:not(.button):not(.dropdown-item) { color: var(--link-internal-dark) }
+.dark .notification a.internal:not(.button):not(.dropdown-item):hover { color: var(--link-internal-dark-hover) }
+.dark table thead th { color : var(--lightest) }
+.dark-alternative { color: var(--white) ; background-color: var(--dark) }
+
+.content figure { display: inline-flex ; margin-left: 0rem ; margin-bottom: 0rem; margin-right: 0.5rem ; vertical-align: middle }
+.content figure:not(:last-child) { margin-bottom: 0rem }
+.content table td { vertical-align: middle }
+
+.light .control.has-icons-left .icon, .light .control.has-icons-right .icon { color: var(--lighter) }
+.dark .control.has-icons-left .icon, .dark .control.has-icons-right .icon { color: var(--darker) }
+
+.footer { padding-top: 0.5rem ; padding-left: 0.5rem ; padding-bottom: 0.5rem ; padding-right: 0.5rem }
+
+.level:not(:last-child) { margin-bottom: 1.0rem }
+.level.hasContinuation:not(:last-child) { margin-bottom: 0.5rem }
+
+.markdown p, .markdown li, .markdown th, .markdown td { font-size: 0.875rem }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6, .markdown table thead th { color: currentColor }
+.markdown.light a, .markdown.light-in-notification a { color: var(--link-markdown-light) }
+.markdown.light a:hover, .markdown.light-in-notification a:hover { color: var(--link-markdown-light-hover) }
+.markdown.light blockquote { background-color: var(--lightest) ; border-left-color: var(--even-lighter) }
+.markdown.light hr { background-color: var(--lighter) }
+.markdown.light table thead tr:hover { background-color: var(--even-lighter) }
+.markdown.light table tbody tr:hover { background-color: var(--lightest) }
+.markdown.light th, .markdown.light td { border-bottom-color: var(--lightest) }
+.markdown.dark a, .markdown.dark-in-notification a { color: var(--link-markdown-dark) }
+.markdown.dark a:hover, .markdown.dark-in-notification a:hover { color: var(--link-markdown-dark-hover) }
+.markdown.dark blockquote { background-color: var(--darkest) ; border-left-color: var(--even-darker) }
+.markdown.dark hr { background-color: var(--darker) }
+.markdown.dark table thead tr:hover { background-color: var(--even-darker) }
+.markdown.dark table tbody tr:hover { background-color: var(--darkest) }
+.markdown.dark th, .markdown.dark td { border-bottom-color: var(--darkest) }
+/* Note: For "Markdown in notification", we do not know the "current" background-color - so use something neutral (for both light and dark). */
+.markdown.light-in-notification blockquote, .markdown.dark-in-notification blockquote { background-color: var(--neutral-darker) ; border-left-color: var(--neutral-lighter) }
+.markdown.light-in-notification hr, .markdown.dark-in-notification hr { background-color: var(--neutral) }
+.markdown.light-in-notification table tr:hover, .markdown.dark-in-notification table tr:hover { background-color: var(--neutral) }
+.markdown.light-in-notification th, .markdown.light-in-notification td, .markdown.dark-in-notification th, .markdown.dark-in-notification td { border-bottom-color: var(--neutral) }
+
+.modal-background { background-color: rgba(128, 128, 128, 0.75) }
+.modal-card-head.light-alternative { background-color: var(--lightest) ; border-bottom-color: var(--light) }
+.modal-card-head.dark-alternative { background-color: var(--darkest) ; border-bottom-color: var(--dark) }
+.modal-card-title.light-alternative { background-color: var(--lightest) }
+.modal-card-title.dark-alternative { background-color: var(--darkest) }
+
+.navbar { min-height: 64px }
+.navbar-divider { height: 1px ; margin-left: 0.5rem ; margin-right: 0.5rem }
+.navbar-divider.light { background-color: var(--lightest) }
+.navbar-divider.light-alternative { background-color: var(--even-lighter) }
+.navbar-divider.dark { background-color: var(--darkest) }
+.navbar-divider.dark-alternative { background-color: var(--even-darker) }
+.navbar-dropdown { border-top-width: 0px }
+.navbar-dropdown.light { background-color: var(--lighter) }
+.navbar-dropdown.dark { background-color: var(--darker) }
+.navbar-item { padding-left: 0.5rem ; padding-right: 0.5rem }
+.navbar-item.light.is-active a.internal { color: var(--link-internal-light-hover) }
+.navbar-item.dark.is-active a.internal { color: var(--link-internal-dark-hover) }
+.navbar-link.light { background-color: var(--light) }
+.navbar-link.dark { background-color: var(--dark) }
+.navbar-link.light:hover { color: var(--darker) }
+.navbar-link.dark:hover { color: var(--lighter) }
+.navbar-menu.light { background-color: var(--light) }
+.navbar-menu.dark { background-color: var(--dark) }
+
+.notification:not(:last-child) { margin-bottom: 0.0rem }
+
+.toast { font-size: 0.85rem }
+.toast-info { background-color: var(--info) }
+.toast-success { background-color: var(--success) }
+.toast-warning { background-color: var(--warning) }
+.toast-error { background-color: var(--danger) }
+
+/* TODO-NMB-LOW: Support table.is-striped? tr.is-selected?... */
+.table { margin-bottom: 0.75rem }
+.table.light thead tr:hover { background-color: var(--even-lighter) }
+.table.light tbody tr:hover { background-color: var(--lightest) }
+.table.light th, .table.light td { border-bottom-color: var(--lightest) }
+.table.dark thead tr:hover { background-color: var(--even-darker) }
+.table.dark tbody tr:hover { background-color: var(--darkest) }
+.table.dark th, .table.dark td { border-bottom-color: var(--darkest) }
+
+.tabs.light a.internal { color: var(--link-internal-light) ; border-bottom-color: var(--even-lighter) }
+.tabs.light a.internal:hover { color: var(--link-internal-light-hover) ; border-bottom-color: var(--link-internal-light-hover) }
+.tabs.light li.is-active a.internal { color: var(--link-internal-light-hover) ; border-bottom-color: var(--darker) }
+.tabs.dark a.internal { color: var(--link-internal-dark) ; border-bottom-color: var(--even-darker) }
+.tabs.dark a.internal:hover { color: var(--link-internal-dark-hover) ; border-bottom-color: var(--link-internal-dark-hover) }
+.tabs.dark li.is-active a.internal { color: var(--link-internal-dark-hover); border-bottom-color: var(--lighter) }

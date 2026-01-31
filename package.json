@@ -1,0 +1,39 @@
+{
+    "name": "sweepstake-2026",
+    "version": "α",
+    "description": "The world-famous World Cup 2026 sweepstake. https://sweepstake-2026.azurewebsites.net/",
+    "repository": "git@github.com:aornota/sweepstake-2026.git",
+    "author": "dj narration",
+    "license": "Unlicense",
+    "// dependencies:bulma-checkradio": "pinned to 2.1.1 because 2.1.3 seems not to work",
+    "// dependencies:bulma-pageloader": "pinned to 2.1.0 because 2.2.0 causes a \"This selector doesn't have any properties\" warning",
+    "// dependencies:bulma-tooltip": "pinned to 2.0.2 (and Fulma.Extensions.Wikiki.Tooltip pinned to 2.0.1) because 3.0.2 seems not to work",
+    "// dependencies:sass": "pinned to 1.32.13 because 1.38.2 reports deprecation warnings for bulma-checkradio.sass",
+    "dependencies": {
+        "bulma": "0.9.4",
+        "bulma-checkradio": "2.1.1",
+        "bulma-pageloader": "2.1.0",
+        "bulma-tooltip": "2.0.2",
+        "react": "18.3.1",
+        "react-dom": "18.3.1",
+        "toastr": "^2.1.4"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.21.4",
+        "@babel/preset-env": "^7.21.4",
+        "babel-loader": "^9.1.2",
+        "copy-webpack-plugin": "^11.0.0",
+        "core-js": "^3.30.0",
+        "css-loader": "^6.11.0",
+        "html-webpack-plugin": "^5.3.1",
+        "mini-css-extract-plugin": "^2.7.5",
+        "remotedev": "^0.2.9",
+        "sass": "^1.62.0",
+        "sass-loader": "^13.3.3",
+		"source-map-loader": "4.0.1",
+        "style-loader": "^3.3.4",
+        "webpack": "5.88.2",
+        "webpack-cli": "^4.10.0",
+        "webpack-dev-server": "^3.11.3"
+    }
+}

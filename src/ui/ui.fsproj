@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="..\common\units-of-measure.fs" />
+        <Compile Include="..\common\literals.fs" />
+        <Compile Include="..\common\unexpected-error.fs" />
+        <Compile Include="..\common\if-debug.fs" />
+        <Compile Include="..\common\json.fs" />
+        <Compile Include="..\common\markdown.fs" />
+        <Compile Include="..\common\revision.fs" />
+        <Compile Include="..\common\delta.fs" />
+        <Compile Include="..\common\domain\core.fs" />
+        <Compile Include="..\common\domain\user.fs" />
+        <Compile Include="..\common\domain\squad.fs" />
+        <Compile Include="..\common\domain\fixture.fs" />
+        <Compile Include="..\common\domain\news.fs" />
+        <Compile Include="..\common\domain\draft.fs" />
+        <Compile Include="..\common\domain\chat.fs" />
+        <Compile Include="..\common\ws-api\ui-msg.fs" />
+        <Compile Include="..\common\ws-api\server-msg.fs" />
+        <Compile Include="..\ui-render\render-common.fs" />
+        <Compile Include="..\ui-render\render-bulma.fs" />
+        <Compile Include="..\ui-theme\theme-common.fs" />
+        <Compile Include="..\ui-theme\theme-light.fs" />
+        <Compile Include="..\ui-theme\theme-dark.fs" />
+        <Compile Include="..\ui-theme\theme-shared.fs" />
+        <Compile Include="..\ui-theme\theme-render-bulma.fs" />
+        <Compile Include="..\ui-common\json-converter.fs" />
+        <Compile Include="..\ui-common\local-storage.fs" />
+        <Compile Include="..\ui-common\lazy-view-or-hmr.fs" />
+        <Compile Include="..\ui-common\should-never-happen.fs" />
+        <Compile Include="..\ui-common\timestamp-helper.fs" />
+        <Compile Include="..\ui-common\marked.fs" />
+        <Compile Include="..\ui-common\render-markdown.fs" />
+        <Compile Include="..\ui-common\notifications.fs" />
+        <Compile Include="..\ui-common\toasts.fs" />
+        <Compile Include="ui-shared.fs" />
+        <Compile Include="pages\user-admin\user-admin-common.fs" />
+        <Compile Include="pages\user-admin\user-admin-state.fs" />
+        <Compile Include="pages\user-admin\user-admin-render.fs" />
+        <Compile Include="pages\draft-admin\draft-admin-common.fs" />
+        <Compile Include="pages\draft-admin\draft-admin-state.fs" />
+        <Compile Include="pages\draft-admin\draft-admin-render.fs" />
+        <Compile Include="pages\news\news-common.fs" />
+        <Compile Include="pages\news\news-state.fs" />
+        <Compile Include="pages\news\news-render.fs" />
+        <Compile Include="pages\scores\scores-common.fs" />
+        <Compile Include="pages\scores\scores-state.fs" />
+        <Compile Include="pages\scores\scores-render.fs" />
+        <Compile Include="pages\squads\squads-common.fs" />
+        <Compile Include="pages\squads\squads-state.fs" />
+        <Compile Include="pages\squads\squads-render.fs" />
+        <Compile Include="pages\fixtures\fixtures-common.fs" />
+        <Compile Include="pages\fixtures\fixtures-state.fs" />
+        <Compile Include="pages\fixtures\fixtures-render.fs" />
+        <Compile Include="pages\drafts\drafts-common.fs" />
+        <Compile Include="pages\drafts\drafts-state.fs" />
+        <Compile Include="pages\drafts\drafts-render.fs" />
+        <Compile Include="pages\chat\chat-common.fs" />
+        <Compile Include="pages\chat\chat-state.fs" />
+        <Compile Include="pages\chat\chat-render.fs" />
+        <Compile Include="program\common.fs" />
+        <Compile Include="program\state.fs" />
+        <Compile Include="program\markdown-literals.fs" />
+        <Compile Include="program\render.fs" />
+        <Compile Include="program\run.fs" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

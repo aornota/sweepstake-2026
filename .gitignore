@@ -1,0 +1,12 @@
+.fake/
+.farmer/
+node_modules/
+paket-files/
+publish/
+bin/
+obj/
+persisted/
+secret/
+deploy.zip
+yarn-error.log
+*.fs.js
