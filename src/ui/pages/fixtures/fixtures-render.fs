@@ -443,9 +443,11 @@ let private startsIn (_timestamp:DateTime) : Fable.React.ReactElement option * b
 let private stageText stage =
     match stage with
     | Group group -> group |> groupText
+    | RoundOf32 matchNumber -> sprintf "Round of 32 (match %i)" matchNumber
     | RoundOf16 matchNumber -> sprintf "Round of 16 (match %i)" matchNumber
     | QuarterFinal quarterFinalOrdinal -> sprintf "Quarter-final %i" quarterFinalOrdinal
     | SemiFinal semiFinalOrdinal -> sprintf "Semi-final %i" semiFinalOrdinal
+    | ThirdPlacePlayOff -> "Third place play-off"
     | Final -> "Final"
 
 let private confirmedFixtureDetails (squadDic:SquadDic) fixture =
@@ -625,9 +627,9 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
         match currentFixtureFilter with
         | AllFixtures -> true
         | GroupFixtures currentGroup ->
-            match fixture.Stage with | Group group -> group |> Some = currentGroup | RoundOf16 _ | QuarterFinal _ | SemiFinal _ | Final -> false
+            match fixture.Stage with | Group group -> group |> Some = currentGroup | RoundOf32 _ | RoundOf16 _ | QuarterFinal _ | SemiFinal _ | ThirdPlacePlayOff | Final -> false
         | KnockoutFixtures ->
-            match fixture.Stage with | RoundOf16 _ | QuarterFinal _ | SemiFinal _ | Final -> true | Group _ -> false
+            match fixture.Stage with | RoundOf32 _ | RoundOf16 _ | QuarterFinal _ | SemiFinal _ | ThirdPlacePlayOff | Final -> true | Group _ -> false
         | Fixture _ -> false
     let canConfirmParticipant, canAdministerResults =
         match authUser with

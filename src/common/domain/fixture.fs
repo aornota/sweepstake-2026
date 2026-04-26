@@ -14,15 +14,18 @@ type Role = | Home | Away
 
 type Stage =
     | Group of group : Group
+    | RoundOf32 of matchNumber : uint32
     | RoundOf16 of matchNumber : uint32
     | QuarterFinal of quarterFinalOrdinal : uint32
     | SemiFinal of semiFinalOrdinal : uint32
+    | ThirdPlacePlayOff
     | Final
 
 type Unconfirmed =
     | Winner of stage : Stage
     | RunnerUp of group : Group
     | ThirdPlace of groups : Group list
+    | Loser of stage : Stage
 
 type Participant =
     | Confirmed of squadId : SquadId
