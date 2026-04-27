@@ -712,22 +712,84 @@ let private createInitialFixturesEventsIfNecessary = async {
         let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 68u, Group GroupL, Confirmed croatiaId, Confirmed ghanaId, croatiaVsGhana) |> fixtures.HandleCreateFixtureCmdAsync)
         result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 68u)
 
-        (* TODO-2026...
         // Round-of-32
-        let...
+        let runnerUpAVsRunnerUpBKO = (2026, 06, 28, 19, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 73u, RoundOf32 73u, Unconfirmed (RunnerUp GroupA), Unconfirmed (RunnerUp GroupB), runnerUpAVsRunnerUpBKO) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 73u)
 
+        let winnerCVsRunnerUpF = (2026, 06, 29, 17, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 76u, RoundOf32 76u, Unconfirmed (Winner (Group GroupC)), Unconfirmed (RunnerUp GroupF), winnerCVsRunnerUpF) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 76u)
+
+        let winnerEVsThirdABCDF = (2026, 06, 29, 20, 30) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 74u, RoundOf32 74u, Unconfirmed (Winner (Group GroupE)), Unconfirmed (ThirdPlace [ GroupA ; GroupB ; GroupC ; GroupD ; GroupF ]), winnerEVsThirdABCDF) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 74u)
+
+        let winnerFVsRunnerUpC = (2026, 06, 30, 01, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 75u, RoundOf32 75u, Unconfirmed (Winner (Group GroupF)), Unconfirmed (RunnerUp GroupC), winnerFVsRunnerUpC) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 75u)
+
+        let runnderUpEVsRunnerUpI = (2026, 06, 30, 17, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 78u, RoundOf32 78u, Unconfirmed (RunnerUp GroupE), Unconfirmed (RunnerUp GroupI), runnderUpEVsRunnerUpI) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 78u)
+
+        let winnerIVsThirdCDFGH = (2026, 06, 30, 21, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 77u, RoundOf32 77u, Unconfirmed (Winner (Group GroupI)), Unconfirmed (ThirdPlace [ GroupC ; GroupD ; GroupF ; GroupG ; GroupH ]), winnerIVsThirdCDFGH) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 77u)
+
+        let winnerAVsThirdCEFHI = (2026, 07, 01, 01, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 79u, RoundOf32 79u, Unconfirmed (Winner (Group GroupA)), Unconfirmed (ThirdPlace [ GroupC ; GroupE ; GroupF ; GroupH ; GroupI ]), winnerAVsThirdCEFHI) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 79u)
+
+        let winnerLVsThirdEHIJK = (2026, 07, 01, 16, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 80u, RoundOf32 80u, Unconfirmed (Winner (Group GroupL)), Unconfirmed (ThirdPlace [ GroupE ; GroupH ; GroupI ; GroupJ ; GroupK ]), winnerLVsThirdEHIJK) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 80u)
+
+        let winnerGVsThirdAEHIJ = (2026, 07, 01, 20, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 82u, RoundOf32 82u, Unconfirmed (Winner (Group GroupG)), Unconfirmed (ThirdPlace [ GroupA ; GroupE ; GroupH ; GroupI ; GroupJ ]), winnerGVsThirdAEHIJ) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 82u)
+
+        let winnerDVsThirdBEFIJ = (2026, 07, 02, 00, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 81u, RoundOf32 81u, Unconfirmed (Winner (Group GroupD)), Unconfirmed (ThirdPlace [ GroupB ; GroupE ; GroupF ; GroupI ; GroupJ ]), winnerDVsThirdBEFIJ) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 81u)
+
+        let winnerHVsRunnerUpJ = (2026, 07, 02, 19, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 84u, RoundOf32 84u, Unconfirmed (Winner (Group GroupH)), Unconfirmed (RunnerUp GroupJ), winnerHVsRunnerUpJ) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 84u)
+
+        let runnerUpKVsRunnerUpL = (2026, 07, 02, 23, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 83u, RoundOf32 83u, Unconfirmed (RunnerUp GroupK), Unconfirmed (RunnerUp GroupL), runnerUpKVsRunnerUpL) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 83u)
+
+        let winnerBVsThirdEFGIJ = (2026, 07, 03, 03, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 85u, RoundOf32 85u, Unconfirmed (Winner (Group GroupB)), Unconfirmed (ThirdPlace [ GroupE ; GroupF ; GroupG ; GroupI ; GroupJ ]), winnerBVsThirdEFGIJ) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 85u)
+
+        let runnerUpDVsRunnerUpG = (2026, 07, 03, 18, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 88u, RoundOf32 88u, Unconfirmed (RunnerUp GroupD), Unconfirmed (RunnerUp GroupG), runnerUpDVsRunnerUpG) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 88u)
+
+        let winnerJVsRunnerUpH = (2026, 07, 03, 22, 00) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 86u, RoundOf32 86u, Unconfirmed (Winner (Group GroupJ)), Unconfirmed (RunnerUp GroupH), winnerJVsRunnerUpH) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 86u)
+
+        let winnerKVsThirdDEIJL = (2026, 07, 04, 01, 30) |> dateTimeOffsetUtc
+        let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 87u, RoundOf32 87u, Unconfirmed (Winner (Group GroupK)), Unconfirmed (ThirdPlace [ GroupD ; GroupE ; GroupI ; GroupJ ; GroupL ]), winnerKVsThirdDEIJL) |> fixtures.HandleCreateFixtureCmdAsync)
+        result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 87u)
+
+        (* TODO-2026...
         // Round-of-16
-        let runnerUpAVsRunnerUpBKO = (2024, 06, 29, 16, 00) |> dateTimeOffsetUtc
+        let runnerUpAVsRunnerUpBKO = (2026, 07, 09, 16, 00) |> dateTimeOffsetUtc
         let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 38u, RoundOf16 38u, Unconfirmed (RunnerUp GroupA), Unconfirmed (RunnerUp GroupB), runnerUpAVsRunnerUpBKO) |> fixtures.HandleCreateFixtureCmdAsync)
         result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 38u)
 
         // Quarter-finals
-        let winner39VsWinner37KO = (2024, 07, 05, 16, 00) |> dateTimeOffsetUtc
+        let winner39VsWinner37KO = (2026, 07, 05, 16, 00) |> dateTimeOffsetUtc
         let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 46u, QuarterFinal 2u, Unconfirmed (Winner (RoundOf16 39u)), Unconfirmed (Winner (RoundOf16 37u)), winner39VsWinner37KO) |> fixtures.HandleCreateFixtureCmdAsync)
         result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 45u)
 
         // Semi-finals
-        let winnerQF1VsWinnerQF2KO = (2024, 07, 09, 19, 00) |> dateTimeOffsetUtc
+        let winnerQF1VsWinnerQF2KO = (2026, 07, 09, 19, 00) |> dateTimeOffsetUtc
         let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 49u, SemiFinal 1u, Unconfirmed (Winner (QuarterFinal 1u)), Unconfirmed (Winner (QuarterFinal 2u)), winnerQF1VsWinnerQF2KO) |> fixtures.HandleCreateFixtureCmdAsync)
         result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 49u)
 
@@ -735,7 +797,7 @@ let private createInitialFixturesEventsIfNecessary = async {
         let...
 
         // Final
-        let winnerSF1VsWinnerSF2KO = (2024, 07, 14, 19, 00) |> dateTimeOffsetUtc
+        let winnerSF1VsWinnerSF2KO = (2026, 07, 14, 19, 00) |> dateTimeOffsetUtc
         let! result = nephTokens.CreateFixtureToken |> ifToken (fun token -> (token, nephId, fixtureId 51u, Final, Unconfirmed (Winner (SemiFinal 1u)), Unconfirmed (Winner (SemiFinal 2u)), winnerSF1VsWinnerSF2KO) |> fixtures.HandleCreateFixtureCmdAsync)
         result |> logShouldSucceed (sprintf "HandleCreateFixtureCmdAsync (match %i)" 51u)
         *)
