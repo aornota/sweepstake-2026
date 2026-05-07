@@ -33,7 +33,7 @@ let private webapp = webApp {
     zip_deploy publishDir }
 
 let private deployment = arm {
-    location Location.NorthEurope
+    location Location.UKWest
     add_resource webapp }
 
 let private platformTool tool winTool =
