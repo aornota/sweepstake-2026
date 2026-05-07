@@ -38,7 +38,7 @@ let private columnEmpty = Column.column [] []
 let columnContent children =
     columns true [
         columnEmpty
-        Column.column [ Column.CustomClass "is-four-fifths-mobile is-four-fifths-tablet is-three-quarters-desktop is-three-fifths-widescreen is-half-fullhd" ] children
+        Column.column [ Column.CustomClass "is-full-mobile is-full-tablet is-four-fifths-desktop is-three-quarters-widescreen is-three-fifths-fullhd" ] children
         columnEmpty ]
 
 let columnsLeftAndRight leftChildren rightChildren = columns true [ Column.column [] leftChildren ; Column.column [] rightChildren ]

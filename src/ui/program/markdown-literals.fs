@@ -14,16 +14,18 @@ The **team/coach** will score (or lose) points for:
 (If a player receives a second yellow card in a match, the two yellow cards will be scored as a red card instead; however, if a player receives a yellow card followed by a "straight"
 red card, both cards will be scored.)
 
-Where multiple possible scores are given above, the score will depend on whether the team and their opponents are in the top 12 seeds:
-+ if the team **is** a top 12 seed but their opponents are **not**, the **lowest** score will apply
-+ if the team is **not** a top 12 seed but their opponents **are**, the **highest** score will apply
-+ if **both** teams are top 12 seeds - or if **neither** team is - the **middle** score will apply
+Where multiple possible scores are given above, the score will depend on whether the team and their opponents are in the top 24 seeds:
++ if the team **is** a top 24 seed but their opponents are **not**, the **lowest** score will apply
++ if the team is **not** a top 24 seed but their opponents **are**, the **highest** score will apply
++ if **both** teams are top 24 seeds - or if **neither** team is - the **middle** score will apply
 
-The top 12 seeds are (in order): Germany; Portugal; France; Spain; Belgium; England; Hungary; Turkey; Romania; Denmark; Albania; and Austria.
+The top 24 seeds are (in order): Spain; Argentina; France; England; Brazil; Portugal; Netherlands; Belgium; Germany; Croatia; Morocco; Colombia; United States; Mexico; Uruguay; Switzerland;
+Japan; Senegal; Iran; South Korea; Ecuador; Austria; Australia; and Canada.
 
-(Note that these seedings are based on those used for the draw, which are themselves based on rankings from the qualifiers. However, as hosts, Germany have been arbitrarily treated as the top seeds.)
+(Note that these seedings are based on those detailed [here](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_seeding),)
 
-The remaining teams are: Croatia; Czech Republic; Georgia; Italy; Netherlands; Poland; Scotland; Serbia; Slovakia; Slovenia; Switzerland; and Ukraine.
+The remaining teams are: Algeria; Bosnia and Herzegovina; Cape Verde; Czech Republic; Curaçao; DR Congo; Egypt; Ghana; Haiti; Iraq; Ivory Coast; Jordan; New Zealand; Norway; Panama; Paraguay;
+Qatar; Saudi Arabia; Scotland; South Africa; Sweden; Tunisia; Turkey; and Uzbekistan.
 
 **All players** will score (or lose) points for:
 + being named **man-of-the-match**: **10** if the player is a forward; **15** if the player is a midfielder; **20** if the player is a defender or a goalkeeper
@@ -91,10 +93,10 @@ It's not a perfect algorithm by any means. But it's the best I've been able to c
 For a more detailed example, here are the [first and second draft details](http://aornota.github.io/sweepstake.2016/draft.html) for the world-famous Euro 2016 sweepstake."""
 
 let [<Literal>] PAYOUTS_MARKDOWN = """##### **Payouts:**
-+ **£50** for first place
-+ **£30** for second place
-+ **£20** for third place
-+ **£10** for the [Holzlöffel](https://translate.google.co.uk/?sl=auto&tl=en&text=Holzl%C3%B6ffel&op=translate)"""
++ **£TBC** for first place
++ **£TBC** for second place
++ **£TBC** for third place
++ **£TBC** for the cuchara de madera"""
 
 let [<Literal>] MARKDOWN_SYNTAX_MARKDOWN = """# Markdown syntax
 ### A very quick introduction

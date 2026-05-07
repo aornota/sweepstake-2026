@@ -25,8 +25,10 @@ let private renderStandings (useDefaultTheme, users:(UserId * UserName) list, sq
         let userRow userCount (rank, tieCount, rankChange, userId, UserName userName, squad, players, points, pointsChange) =
             let payout =
                 let paraPayout = { paraDefaultSmallest with ParaAlignment = RightAligned }
+                // TODO-2026: Update once number of sweepstakers knows...
                 let payout =
                     match rank, tieCount with
+                    (*
                     | 1, 1 -> 50. |> Some
                     | 1, 2 -> 40. |> Some
                     | 1, 3 -> 33.33 |> Some
@@ -44,6 +46,7 @@ let private renderStandings (useDefaultTheme, users:(UserId * UserName) list, sq
                     | rank, 1 when rank = userCount -> 10. |> Some
                     | rank, 2 when rank = userCount - 1 -> 5. |> Some
                     | rank, n when rank = userCount - (n - 1) -> None // note: unlikely to happen
+                    *)
                     | _ -> None
                 match payout with
                 // TODO-NMB-2021: Show payouts...
