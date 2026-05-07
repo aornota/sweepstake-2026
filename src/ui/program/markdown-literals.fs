@@ -96,7 +96,7 @@ let [<Literal>] PAYOUTS_MARKDOWN = """##### **Payouts:**
 + **£TBC** for first place
 + **£TBC** for second place
 + **£TBC** for third place
-+ **£TBC** for the [cuchara de madera][(https://translate.google.co.uk/?sl=auto&tl=es&text=wooden%20spoon&op=translate)"""
++ **£TBC** for the [cuchara de madera](https://translate.google.co.uk/?sl=es&tl=en&text=cuchara%20de%20madera&op=translate)"""
 
 let [<Literal>] MARKDOWN_SYNTAX_MARKDOWN = """# Markdown syntax
 ### A very quick introduction
