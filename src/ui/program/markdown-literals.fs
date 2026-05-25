@@ -15,17 +15,17 @@ The **team/coach** will score (or lose) points for:
 red card, both cards will be scored.)
 
 Where multiple possible scores are given above, the score will depend on whether the team and their opponents are in the top 24 seeds:
-+ if the team **is** a top 24 seed but their opponents are **not**, the **lowest** score will apply
-+ if the team is **not** a top 24 seed but their opponents **are**, the **highest** score will apply
-+ if **both** teams are top 24 seeds - or if **neither** team is - the **middle** score will apply
++ if the team **is** a top 12 seed but their opponents are **not**, the **lowest** score will apply
++ if the team is **not** a top 12 seed but their opponents **are**, the **highest** score will apply
++ if **both** teams are top 12 seeds - or if **neither** team is - the **middle** score will apply
 
-The top 24 seeds are (in order): Spain; Argentina; France; England; Brazil; Portugal; Netherlands; Belgium; Germany; Croatia; Morocco; Colombia; United States; Mexico; Uruguay; Switzerland;
-Japan; Senegal; Iran; South Korea; Ecuador; Austria; Australia; and Canada.
+The top 12 seeds are (in order): Spain; Argentina; France; England; Brazil; Portugal; Netherlands; Belgium; Germany; Croatia; Morocco; and Colombia.
 
 (Note that these seedings are based on those detailed [here](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_seeding),)
 
-The remaining teams are: Algeria; Bosnia and Herzegovina; Cape Verde; Czech Republic; Curaçao; DR Congo; Egypt; Ghana; Haiti; Iraq; Ivory Coast; Jordan; New Zealand; Norway; Panama; Paraguay;
-Qatar; Saudi Arabia; Scotland; South Africa; Sweden; Tunisia; Turkey; and Uzbekistan.
+The remaining teams are: Algeria; Australia; Austria; Bosnia and Herzegovina; Canada; Cape Verde; Czech Republic; Curaçao; DR Congo; Ecuador; Egypt; Ghana; Haiti; Iran; Iraq; Ivory Coast;
+Japan; Jordan; Mexico; New Zealand; Norway; Panama; Paraguay; Qatar; Saudi Arabia; Scotland; Senegal; South Africa; South Korea; Sweden; Switzerland; Tunisia; Turkey; United States; Uzbekistan;
+and Uruguay.
 
 **All players** will score (or lose) points for:
 + being named **man-of-the-match**: **10** if the player is a forward; **15** if the player is a midfielder; **20** if the player is a defender or a goalkeeper
@@ -92,6 +92,7 @@ It's not a perfect algorithm by any means. But it's the best I've been able to c
 
 For a more detailed example, here are the [first and second draft details](http://aornota.github.io/sweepstake.2016/draft.html) for the world-famous Euro 2016 sweepstake."""
 
+// TODO-2026: Update once number of sweepstakers known...
 let [<Literal>] PAYOUTS_MARKDOWN = """##### **Payouts:**
 + **£TBC** for first place
 + **£TBC** for second place

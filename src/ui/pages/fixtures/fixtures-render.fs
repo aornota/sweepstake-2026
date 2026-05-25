@@ -432,12 +432,12 @@ let private groupTabs currentFixturesFilter dispatch =
     | GroupFixtures currentGroup -> groups |> List.map (groupTab currentGroup dispatch)
     | _ -> []
 
-let private startsIn (_timestamp:DateTime) : Fable.React.ReactElement option * bool =
+let private startsIn (_timestamp:DateTime) : Fable.React.ReactElement option =
 #if TICK
     let startsIn, imminent = _timestamp |> startsIn
-    (if imminent then strong startsIn else str startsIn) |> Some, imminent
+    (if imminent then strong startsIn else str startsIn) |> Some
 #else
-    None, false
+    None
 #endif
 
 let private stageText stage =
@@ -562,6 +562,8 @@ let private addLinks theme fixtureId role forSquadId opponentSquadId opponentGoa
         yield RctH.ofOption addManOfTheMatch
     ]
 
+// TODO-2026: Ability to add custom message text (i.e. for auto-post) - but only if no missing match events?...
+
 let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squadDic:SquadDic) (_userDic:UserDic) authUser dispatch =
     let theme = getTheme useDefaultTheme
     let canAdministerResults = match authUser with | Some authUser -> authUser.Permissions.ResultsAdminPermission | None -> false
@@ -604,8 +606,7 @@ let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squ
                 yield [ em penaltyShootoutText ] |> para theme paraCentredSmaller
                 yield divVerticalSpace 20
             | None ->
-                let isKnockout = match fixture.Stage with | Group _ -> false | _ -> true
-                if homeGoals = awayGoals && isKnockout then
+                if homeGoals = awayGoals && fixture |> isKnockout then
                     let onClick = (fun _ -> (fixtureId, homeSquadId, awaySquadId) |> ShowAddPenaltyShootoutModal |> dispatch)
                     let addPenaltyShootout = [ str "Add penalty shootout" ] |> link theme (Internal onClick)
                     yield [ addPenaltyShootout ] |> para theme paraCentredSmallest
@@ -613,6 +614,26 @@ let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squ
                 else ()
             if homeEvents.Length + awayEvents.Length > 0 then
                 yield columnsLeftAndRight homeEvents awayEvents
+            match fixtureStatus fixtureDic fixtureId with
+            | None | Some NotStarted | Some NotConfirmed -> () // should never happen
+            | Some DetailsPending | Some DetailsEntered -> ()
+            | Some DetailsOverdue ->
+                yield notification theme notificationWarning [ [ str "Details are overdue" ] |> para theme paraCentredSmaller ]
+                yield divVerticalSpace 10
+            | Some (DetailsMissing missingMatchEvents) ->
+                let missingDetails =
+                    [
+                        match missingMatchEvents |> List.filter (fun missingMatchEvent -> missingMatchEvent <> ManOfTheMatchMissing) with
+                        | [] -> ()
+                        | missingMatchEvents ->
+                            let missingMatchEventsText= missingMatchEvents |> List.map (missingMatchEventText squadDic) |> concatenate
+                            [ str (sprintf "Unless details of goals are still being entered, the following details will need to be added: %s." missingMatchEventsText) ] |> para theme paraCentredSmaller
+                        if missingMatchEvents |> List.contains ManOfTheMatchMissing then
+                            [ str (sprintf "The %s needs to be added." (missingMatchEventText squadDic ManOfTheMatchMissing)) ] |> para theme paraCentredSmaller
+                        else ()
+                    ]
+                yield notification theme notificationWarning missingDetails
+                yield divVerticalSpace 10
             if homeAddLinks.Length + awayAddLinks.Length > 0 then
                 yield columnsLeftAndRight homeAddLinks awayAddLinks
 
@@ -723,19 +744,38 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
             str home, None, str "vs.", str away, None, None
     let extra (fixtureId, fixture) =
         let local = fixture.KickOff.LocalDateTime
-        let hasResult = match fixture.HomeParticipant, fixture.AwayParticipant, fixture.MatchResult with | Confirmed _ , Confirmed _, Some _ -> true | _ -> false
+        let paraRight = { paraDefaultSmallest with ParaAlignment = RightAligned }
+        let paraWarning = { paraDefaultSmallest with ParaAlignment = RightAligned ; ParaColour = SemanticPara Warning }
+        let paraGrey = { paraDefaultSmallest with ParaAlignment = RightAligned ; ParaColour = GreyscalePara Grey }
+        let showEditOrViewDetailsText = if canAdministerResults then "Edit details" else "View details"
         let onClick = (fun _ -> fixtureId |> ShowFixture |> dispatch)
-        if hasResult then
-            let showFixtureText = if canAdministerResults then "Edit details" else "View details"
-            [ [ str showFixtureText ] |> para theme { paraDefaultSmallest with ParaAlignment = RightAligned } ] |> link theme (Internal onClick) |> Some
-        else
-            if canAdministerResults && local < DateTime.Now then
-                [ [ str "Add details" ] |> para theme { paraDefaultSmallest with ParaAlignment = RightAligned } ] |> link theme (Internal onClick) |> Some
-            else
-                let paraExtra = { paraDefaultSmallest with ParaAlignment = RightAligned ; ParaColour = GreyscalePara Grey }
-                let extra, imminent = if local < DateTime.Now then em "Result pending" |> Some, true else local |> startsIn
-                let paraExtra = if imminent then { paraExtra with ParaColour = GreyscalePara GreyDarker } else paraExtra
-                match extra with | Some extra -> [ extra ] |> para theme paraExtra |> Some | None -> None
+        match fixtureStatus fixtureDic fixtureId with
+        | None -> None // should never happen
+        | Some NotStarted ->
+            match local |> startsIn with
+            | Some startsIn -> [ startsIn ] |> para theme paraGrey |> Some
+            | None -> None
+        | Some NotConfirmed -> [ em "Pending confirmation of participants" ] |> para theme paraWarning |> Some
+        | Some DetailsPending ->
+            if canAdministerResults then [ [ str "Add details" ] |> para theme paraRight ] |> link theme (Internal onClick) |> Some
+            else [ strongEm "Result pending" ] |> para theme paraGrey |> Some
+        | Some DetailsOverdue ->
+            if canAdministerResults then
+                let extra =
+                    [
+                        [ strongEm "Result overdue" ] |> para theme paraWarning
+                        [ [ str "Add details" ] |> para theme paraRight ] |> link theme (Internal onClick)
+                    ]
+                extra |> div divDefault |> Some
+            else [ strongEm "Result overdue" ] |> para theme paraWarning |> Some
+        | Some (DetailsMissing _) ->
+            let extra =
+                [
+                    [ strongEm "Result has missing dctails" ] |> para theme paraWarning
+                    [ [ str showEditOrViewDetailsText ] |> para theme paraRight ] |> link theme (Internal onClick)
+                ]
+            extra |> div divDefault |> Some
+        | Some DetailsEntered -> [ [ str showEditOrViewDetailsText ] |> para theme paraRight ] |> link theme (Internal onClick) |> Some
     let fixtureRow (fixtureId, fixture) =
         let date, time = fixture.KickOff.LocalDateTime |> dateText, fixture.KickOff.LocalDateTime.ToString ("HH:mm")
         let home, homeGoals, vs, away, awayGoals, penaltyShootout = fixture |> details

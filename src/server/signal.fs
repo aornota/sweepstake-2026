@@ -29,7 +29,7 @@ type SquadRead = { SquadId : SquadId ; Rvn : Rvn ; SquadName : SquadName ; Group
 
 type MatchEventRead = { MatchEventId : MatchEventId ; MatchEvent : MatchEvent }
 type FixtureRead =
-    { FixtureId : FixtureId ; Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventsRead : MatchEventRead list }
+    { FixtureId : FixtureId ; Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventsRead : MatchEventRead list ; CustomMessageText : Markdown option }
 
 type DraftRead =
     { DraftId : DraftId ; Rvn : Rvn ; DraftOrdinal : DraftOrdinal ; DraftStatus : DraftStatus ; DraftPicks : (DraftPick * PickedBy) list ; ProcessingEvents : ProcessingEvent list }

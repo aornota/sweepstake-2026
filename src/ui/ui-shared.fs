@@ -5,6 +5,7 @@ open Aornota.Sweepstake2026.Common.Domain.Draft
 open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.Squad
 open Aornota.Sweepstake2026.Common.Domain.User
+open Aornota.Sweepstake2026.Common.Markdown
 open Aornota.Sweepstake2026.Common.Revision
 open Aornota.Sweepstake2026.Common.UnexpectedError
 open Aornota.Sweepstake2026.Common.WsApi.ServerMsg
@@ -26,7 +27,7 @@ type PlayerDic = Dictionary<PlayerId, Player>
 type Squad = { Rvn : Rvn ; SquadName : SquadName ; Group : Group ; Seeding : Seeding option ; CoachName : CoachName ; Eliminated : bool ; PlayerDic : PlayerDic ; PickedBy : PickedBy option }
 type SquadDic = Dictionary<SquadId, Squad>
 
-type Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchResult : MatchResult option }
+type Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchResult : MatchResult option ; CustomMessageText : Markdown option }
 type FixtureDic = Dictionary<FixtureId, Fixture>
 
 type Draft = { Rvn : Rvn ; DraftOrdinal : DraftOrdinal ; DraftStatus : DraftStatus ; ProcessingDetails : ProcessingDetails option }
@@ -52,9 +53,7 @@ let userType (userDic:UserDic) userId =
 let userNames (userDic:UserDic) = userDic |> List.ofSeq |> List.map (fun (KeyValue (_, (userName, _))) -> userName)
 
 let squadName (squadDic:SquadDic) squadId = if squadId |> squadDic.ContainsKey then squadDic.[squadId].SquadName else SquadName UNKNOWN
-// TODO-2026: Confirm how many seeds...
-//let seedingText seeding = match seeding with | Some (Seeding seeding) when seeding <= 12 -> sprintf "%i" seeding | _ -> "N/A"
-let seedingText seeding = match seeding with | Some (Seeding seeding) -> sprintf "%i" seeding | _ -> "N/A"
+let seedingText seeding = match seeding with | Some (Seeding seeding) when seeding <= MAX_SEEDS_FOR_SCORING -> sprintf "%i" seeding | _ -> "N/A"
 
 let playerName (squadDic:SquadDic) (squadId, playerId) =
     if squadId |> squadDic.ContainsKey then
@@ -192,3 +191,14 @@ let playerPoints (fixtureDic:FixtureDic) (squadId, playerId) pickedDate =
         | Some pickedDate -> playerScoreEvents |> List.filter (fun (kickOff, _) -> kickOff > pickedDate) |> List.sumBy snd |> Some
         | None -> None
     points, pickedPoints
+
+let concatenate (items:string list) =
+    match items with
+    | [] -> "NO ITEMS"
+    | h :: t ->
+        let rec concatenate (acc:string) (remaining:string list) =
+            match remaining with
+            | [] -> acc
+            | [ item ] -> concatenate (sprintf "%s; and %s" acc item) []
+            | h :: t -> concatenate (sprintf "%s; %s" acc h) t
+        concatenate h t

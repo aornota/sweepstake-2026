@@ -8,6 +8,7 @@ open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.Squad
 open Aornota.Sweepstake2026.Common.Domain.User
 open Aornota.Sweepstake2026.Common.IfDebug
+open Aornota.Sweepstake2026.Common.Markdown
 open Aornota.Sweepstake2026.Common.Revision
 open Aornota.Sweepstake2026.Common.UnexpectedError
 open Aornota.Sweepstake2026.Common.WsApi.ServerMsg
@@ -40,7 +41,7 @@ type private FixturesInput =
 
 type private MatchEventDic = Dictionary<MatchEventId, MatchEvent>
 
-type private Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventDic : MatchEventDic }
+type private Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventDic : MatchEventDic ; CustomMessageText : Markdown option }
 type private FixtureDic = Dictionary<FixtureId, Fixture>
 
 let private log category = (Entity Entity.Fixtures, category) |> consoleLogger.Log
@@ -62,7 +63,7 @@ let private applyFixtureEvent source idAndFixtureResult (nextRvn, fixtureEvent:F
     | Ok (fixtureId, Some fixture), _ when validateNextRvn (Some fixture.Rvn) nextRvn |> not -> // note: should never happen
         ifDebug (sprintf "Invalid next Rvn for %A (%A) -> %A (%A)" fixtureId fixture.Rvn nextRvn fixtureEvent) UNEXPECTED_ERROR |> otherError
     | Ok (fixtureId, None), FixtureCreated (_, stage, homeParticipant, awayParticipant, kickOff) ->
-        let fixture = { Rvn = nextRvn ; Stage = stage ; HomeParticipant = homeParticipant ; AwayParticipant = awayParticipant ; KickOff = kickOff ; MatchEventDic = MatchEventDic () }
+        let fixture = { Rvn = nextRvn ; Stage = stage ; HomeParticipant = homeParticipant ; AwayParticipant = awayParticipant ; KickOff = kickOff ; MatchEventDic = MatchEventDic () ; CustomMessageText = None }
         (fixtureId, fixture |> Some) |> Ok
     | Ok (fixtureId, None), _ -> // note: should never happen
         ifDebug (sprintf "Invalid initial FixtureEvent for %A -> %A" fixtureId fixtureEvent) UNEXPECTED_ERROR |> otherError
@@ -171,7 +172,7 @@ type Fixtures () =
                         let matchEventsRead = fixture.MatchEventDic |> List.ofSeq |> List.map (fun (KeyValue (matchEventId, matchEvent)) ->
                             { MatchEventId = matchEventId ; MatchEvent = matchEvent })
                         { FixtureId = fixtureId ; Rvn = fixture.Rvn ; Stage = fixture.Stage ; HomeParticipant = fixture.HomeParticipant ; AwayParticipant = fixture.AwayParticipant
-                          KickOff = fixture.KickOff ; MatchEventsRead = matchEventsRead })
+                          KickOff = fixture.KickOff ; MatchEventsRead = matchEventsRead ; CustomMessageText = fixture.CustomMessageText })
                 fixturesRead |> FixturesRead |> broadcaster.Broadcast
                 return! managingFixtures fixtures
             | HandleCreateFixtureCmd _ -> "HandleCreateFixtureCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()

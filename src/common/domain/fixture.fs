@@ -1,10 +1,10 @@
 module Aornota.Sweepstake2026.Common.Domain.Fixture
 
-open Aornota.Sweepstake2026.Common.Revision
-open Aornota.Sweepstake2026.Common.UnitsOfMeasure
-
 open Aornota.Sweepstake2026.Common.Domain.Core
 open Aornota.Sweepstake2026.Common.Domain.Squad
+open Aornota.Sweepstake2026.Common.Markdown
+open Aornota.Sweepstake2026.Common.Revision
+open Aornota.Sweepstake2026.Common.UnitsOfMeasure
 
 open System
 
@@ -77,4 +77,4 @@ type ScoreEvents = { TeamScoreEvents : (TeamScoreEvent * int<point>) list ; Play
 type MatchResult = { MatchOutcome : MatchOutcome ; HomeScoreEvents : ScoreEvents ; AwayScoreEvents : ScoreEvents ; MatchEvents : (MatchEventId * MatchEvent) list }
 
 type FixtureDto =
-    { FixtureId : FixtureId ; Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchResult : MatchResult option }
+    { FixtureId : FixtureId ; Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchResult : MatchResult option ; CustomMessageText : Markdown option }

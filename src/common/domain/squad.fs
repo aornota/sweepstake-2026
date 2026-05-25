@@ -31,6 +31,8 @@ type SquadDto = { SquadOnlyDto : SquadOnlyDto ; PlayerDtos : PlayerDto list }
 
 let [<Literal>] MAX_PLAYERS_PER_SQUAD = 26
 
+let [<Literal>] MAX_SEEDS_FOR_SCORING = 12
+
 let squadIsFullText = sprintf "Squad contains the maximum of %i non-withdrawn players" MAX_PLAYERS_PER_SQUAD
 
 let playerTypeText playerType = match playerType with | Goalkeeper -> "Goalkeeper" | Defender -> "Defender" | Midfielder -> "Midfielder" | Forward -> "Forward"

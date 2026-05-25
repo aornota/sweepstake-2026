@@ -9,6 +9,8 @@ open Aornota.Sweepstake2026.Ui.Common.Notifications
 open Aornota.Sweepstake2026.Ui.Common.ShouldNeverHappen
 open Aornota.Sweepstake2026.Ui.Shared
 
+open System
+
 type FixturesFilter =
     | AllFixtures
     | GroupFixtures of group : Group option
@@ -107,6 +109,19 @@ type State = {
     AddMatchEventState : AddMatchEventState option
     RemoveMatchEventState : RemoveMatchEventState option }
 
+type MissingMatchEvent =
+    | CleanSheetMissing of squadId : SquadId
+    | ManOfTheMatchMissing
+    | PenaltyShootoutMissing
+
+type FixtureStatus =
+    | NotStarted
+    | NotConfirmed
+    | DetailsPending
+    | DetailsOverdue
+    | DetailsMissing of missingMatchEvents : MissingMatchEvent list
+    | DetailsEntered
+
 let unconfirmedText unconfirmed =
     match unconfirmed with
     | Winner (Group group) -> sprintf "%s winner" (group |> groupText)
@@ -153,3 +168,58 @@ let matchEventText (squadDic:SquadDic) matchEvent =
         let (PlayerName playerName) = (squadId, playerId) |> playerName squadDic
         sprintf "Man-of-the-match for %s" playerName
     | PenaltyShootout _ -> "Penalty shootout"
+
+let isKnockout fixture = match fixture.Stage with | Group _ -> false | _ -> true
+
+let missingMatchEventText (squadDic:SquadDic) missingMatchEvent =
+    match missingMatchEvent with
+    | CleanSheetMissing squadId ->
+        let (SquadName squadName) = squadId |> squadName squadDic
+        sprintf "clean sheet for %s" squadName
+    | ManOfTheMatchMissing -> "man-of-the-match"
+    | PenaltyShootoutMissing -> "penalty shootout"
+
+let fixtureStatus (fixtureDic:FixtureDic) fixtureId =
+    if fixtureId |> fixtureDic.ContainsKey then
+        let fixture = fixtureDic.[fixtureId]
+        let local, now = fixture.KickOff.LocalDateTime, DateTime.Now
+        if local <= now then
+            let isOverdue =
+                match isKnockout fixture, (now - local).TotalHours with
+                | false, elapsed when elapsed > 2 -> true
+                | true, elapsed when elapsed > 3. -> true
+                | _ -> false
+            match fixture.HomeParticipant, fixture.AwayParticipant, isOverdue, fixture.MatchResult with
+            | Unconfirmed _, _, _, _ | _, Unconfirmed _, _, _ -> Some NotConfirmed
+            | _, _, false, None -> Some DetailsPending
+            | _, _, true, None -> Some DetailsOverdue
+            | _, _, _, Some matchResult ->
+                let matchEvents = matchResult.MatchEvents |> List.map snd
+                let missingMatchEvents =
+                    [
+                        let homeSquadId = match fixture.HomeParticipant with | Confirmed squadId -> Some squadId | _ -> None
+                        match homeSquadId, matchResult.MatchOutcome.AwayGoals with
+                        | Some homeSquadId, 0u ->
+                            match matchEvents |> List.filter (fun matchEvent -> match matchEvent with | CleanSheet (squadId, _) when squadId = homeSquadId -> true | _ -> false) with
+                            | [] -> CleanSheetMissing homeSquadId
+                            | _ -> ()
+                        | _ -> ()
+                        let awaySquadId = match fixture.AwayParticipant with | Confirmed squadId -> Some squadId | _ -> None
+                        match awaySquadId, matchResult.MatchOutcome.HomeGoals with
+                        | Some awaySquadId, 0u ->
+                            match matchEvents |> List.filter (fun matchEvent -> match matchEvent with | CleanSheet (squadId, _) when squadId = awaySquadId -> true | _ -> false) with
+                            | [] -> CleanSheetMissing awaySquadId
+                            | _ -> ()
+                        | _ -> ()
+                        match matchEvents |> List.filter (fun matchEvent -> match matchEvent with | ManOfTheMatch _ -> true | _ -> false) with
+                        | [] -> ManOfTheMatchMissing
+                        | _ -> ()
+                        match fixture |> isKnockout, matchResult.MatchOutcome.HomeGoals, matchResult.MatchOutcome.AwayGoals, matchResult.MatchOutcome.PenaltyShootoutOutcome with
+                        | true, home, away, None when home = away -> PenaltyShootoutMissing
+                        | _ -> ()
+                    ]
+                match missingMatchEvents with
+                | [] -> Some DetailsEntered
+                | _ -> Some (DetailsMissing missingMatchEvents)
+        else Some NotStarted
+    else None

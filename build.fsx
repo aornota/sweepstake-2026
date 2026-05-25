@@ -65,13 +65,15 @@ let private openBrowser url =
     |> ignore
 
 let private buildUi forAzure =
-    if forAzure then runDotNet (sprintf "fable %s --define AZURE --run webpack" uiDir) __SOURCE_DIRECTORY__
-    else runDotNet (sprintf "fable %s --run webpack" uiDir) __SOURCE_DIRECTORY__
+    if forAzure then runDotNet (sprintf "fable %s --define AZURE --define TICK --run webpack" uiDir) __SOURCE_DIRECTORY__
+    else runDotNet (sprintf "fable %s --define TICK --run webpack" uiDir) __SOURCE_DIRECTORY__
 
 let private publishUi () = Shell.copyDir publishPublicDir uiPublishDir FileFilter.allFiles
 
 Target.create "clean-ui-publish" (fun _ -> Shell.cleanDir uiPublishDir)
 Target.create "clean-publish" (fun _ -> Shell.cleanDir publishDir) // note: this will delete any .\persisted and .\secret folders in publishDir (though should not be running server from publishDir!)
+
+Target.create "clean-fable" (fun _ -> runDotNet "fable clean --yes" __SOURCE_DIRECTORY__)
 
 Target.create "restore-ui" (fun _ ->
     printfn "Yarn version:"
@@ -82,6 +84,7 @@ Target.create "restore-ui" (fun _ ->
 Target.create "run" (fun _ ->
     let server = async { runDotNet "watch run" serverDir }
     let client = async { runDotNet (sprintf "fable %s --define DEBUG --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
+    //let client = async { runDotNet (sprintf "fable %s --define DEBUG --define TICK --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
     let browser = async {
         do! Async.Sleep 2500
         openBrowser "http://localhost:8080" }
@@ -110,6 +113,8 @@ Target.create "help" (fun _ ->
     printfn "\tpublish -> builds [Release] server and [production] ui and copies output to .\\publish"
     printfn "\n\tdeploy-azure -> builds [Release] server and [production] ui, copies output to .\\publish and deploys to Azure"
     printfn "\n\thelp -> shows this list of build targets\n")
+
+"clean-fable" ==> "restore-ui"
 
 "restore-ui" ==> "run"
 "restore-ui" ==> "clean-ui-publish"
