@@ -19,13 +19,14 @@ Where multiple possible scores are given above, the score will depend on whether
 + if the team is **not** a top 12 seed but their opponents **are**, the **highest** score will apply
 + if **both** teams are top 12 seeds - or if **neither** team is - the **middle** score will apply
 
-The top 12 seeds are (in order): Spain; Argentina; France; England; Brazil; Portugal; Netherlands; Belgium; Germany; Croatia; Morocco; and Colombia.
+The top 12 seeds are (in order): United States; Mexico; Canada; Spain; Argentina; France; England; Brazil; Portugal; Netherlands; Belgium; and Germany.
 
-(Note that these seedings are based on those detailed [here](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_seeding),)
+(Note that these seedings are based on those detailed [here](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_seeding). Notwithstanding their pitiful world rankings, the host nations -
+United States, Mexico, and Canada - are the top 3 seeds.)
 
-The remaining teams are: Algeria; Australia; Austria; Bosnia and Herzegovina; Canada; Cape Verde; Czech Republic; Curaçao; DR Congo; Ecuador; Egypt; Ghana; Haiti; Iran; Iraq; Ivory Coast;
-Japan; Jordan; Mexico; New Zealand; Norway; Panama; Paraguay; Qatar; Saudi Arabia; Scotland; Senegal; South Africa; South Korea; Sweden; Switzerland; Tunisia; Turkey; United States; Uzbekistan;
-and Uruguay.
+The remaining teams are: Algeria; Australia; Austria; Bosnia and Herzegovina; Cape Verde;  Colombia; Croatia; Czech Republic; Curaçao; DR Congo; Ecuador; Egypt; Ghana; Haiti; Iran; Iraq;
+Ivory Coast; Japan; Jordan;  Morocco; New Zealand; Norway; Panama; Paraguay; Qatar; Saudi Arabia; Scotland; Senegal; South Africa; South Korea; Sweden; Switzerland; Tunisia; Turkey;
+Uzbekistan; and Uruguay.
 
 **All players** will score (or lose) points for:
 + being named **man-of-the-match**: **10** if the player is a forward; **15** if the player is a midfielder; **20** if the player is a defender or a goalkeeper
