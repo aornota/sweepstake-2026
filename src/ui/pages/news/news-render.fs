@@ -1,5 +1,6 @@
 module Aornota.Sweepstake2026.Ui.Pages.News.Render
 
+open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.News
 open Aornota.Sweepstake2026.Common.Domain.User
 open Aornota.Sweepstake2026.Common.Markdown
@@ -20,6 +21,116 @@ open System
 module RctH = Fable.React.Helpers
 
 let [<Literal>] private REMOVED_MARKDOWN = "_This post has been removed_"
+
+type private NewsType =
+    | News of postId:PostId * post:Post
+    | AutoFixture of fixtureId:FixtureId * fixture:Fixture
+
+let private bold text = sprintf "**%s**" text
+let private italic text = sprintf "_%s_" text
+let private boldItalic = bold >> italic
+
+let private concatenateLines (lines:string list) = String.Join (Environment.NewLine, lines |> Array.ofList)
+
+let private renderAutoFixtureHeader theme squadDic (fixture:Fixture) = [
+    let teams, result = fixture |> confirmedFixtureDetails squadDic
+    let lines = [
+        match teams with
+        | Some (_, homeName, _, awayName) ->
+            let stageText = fixture.Stage |> stageText false |> italic
+            match result with
+            | Some (homeIsWinner, homeGoals, awayIsWinner, awayGoals, penaltyShootoutText, _, _, _) ->
+                let homeNameAndScore, awayNameAndScore = sprintf "%s %i" homeName homeGoals, sprintf "%i %s" awayGoals awayName
+                yield sprintf "#### %s: %s - %s" stageText (if homeIsWinner then homeNameAndScore |> bold else homeNameAndScore) (if awayIsWinner then awayNameAndScore |> bold else awayNameAndScore)
+                match penaltyShootoutText with
+                | Some penaltyShootoutText -> yield penaltyShootoutText |> italic
+                | None -> ()
+            | None ->
+                yield sprintf "#### %s: %s vs. %s" stageText homeName awayName
+        | None -> () // should never happen
+    ]
+    yield lines |> concatenateLines |> Markdown |> notificationContentFromMarkdown theme
+]
+
+(*
+_**16**_ points for **jem** (Ollie Watkins goal and man-of-the-match; Dutch yellow cards); _**13**_ points for **nourdine** (Xavi Simons goal and yellow card; Cole Palmer assist); _**9**_ points each for **rob** (English win, less yellow cards) and **rosie** (Harry Kane penalty); _**-2**_ points for **will** (Bukayo Saka yellow card); and _**-4**_ points for **highnam** (Jude Bellingham yellow card; Virgil van Dijk yellow card).
+*)
+
+let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squadDic:SquadDic) (fixture:Fixture) = [
+    let nothingToSeeHere = "Nothing to see here"
+    let teams, _ = fixture |> confirmedFixtureDetails squadDic
+    let lines = [
+        match teams with
+        | Some (homeSquadId, _, awaySquadId, _) ->
+            if homeSquadId |> squadDic.ContainsKey && awaySquadId |> squadDic.ContainsKey then
+                match fixture.MatchResult with
+                | Some matchResult ->
+                    let homeSquad, awaySquad = squadDic.[homeSquadId], squadDic.[awaySquadId]
+                    let teanScoreEvents = [
+                        match homeSquad.PickedBy with
+                        | Some (userId, _, pickedDate) when fixture.KickOff > pickedDate ->
+                            yield! matchResult.HomeScoreEvents.TeamScoreEvents |> List.map (fun (event, points) -> userId, homeSquad, event, points)
+                        | _ -> ()
+                        match awaySquad.PickedBy with
+                        | Some (userId, _, pickedDate) when fixture.KickOff > pickedDate ->
+                            yield! matchResult.AwayScoreEvents.TeamScoreEvents |> List.map (fun (event, points) -> userId, awaySquad, event, points)
+                        | _ -> ()
+                    ]
+                    let playerScoreEvents = [
+                        yield!
+                            matchResult.HomeScoreEvents.PlayerScoreEvents
+                            |> List.choose (fun (playerId, items) ->
+                                if playerId |> homeSquad.PlayerDic.ContainsKey then
+                                    let player = homeSquad.PlayerDic.[playerId]
+                                    match player.PickedBy with
+                                    | Some (userId, _, pickedDate) when fixture.KickOff > pickedDate -> Some (userId, player, items)
+                                    | _ -> None
+                                else None)
+                        yield!
+                            matchResult.AwayScoreEvents.PlayerScoreEvents
+                            |> List.choose (fun (playerId, items) ->
+                                if playerId |> awaySquad.PlayerDic.ContainsKey then
+                                    let player = awaySquad.PlayerDic.[playerId]
+                                    match player.PickedBy with
+                                    | Some (userId, _, pickedDate) when fixture.KickOff > pickedDate -> Some (userId, player, items)
+                                    | _ -> None
+                                 else None)
+                        ]
+                    let userTeamScores =
+                        teanScoreEvents
+                        |> List.groupBy (fun (userId, _, _, _) -> userId)
+                        |> List.map (fun (userId, items) ->
+                            let points = items |> List.sumBy (fun (_, _, _, points) -> points)
+
+                            // TODO-NMB: Squad and TeamScoreEvent descriptions...
+
+                            userId, points)
+                    let userPlayerScores =
+                        playerScoreEvents
+                        |> List.groupBy (fun (userId, _, _) -> userId)
+                        |> List.map (fun (userId, items) ->
+                            let points = items |> List.sumBy (fun (_, _, subItems) -> subItems |> List.sumBy snd)
+
+                            // TODO-NMB: Player and PlayerScoreEvent descriptions...
+
+                            userId, points)
+                    yield!
+                        userTeamScores @ userPlayerScores
+                        |> List.groupBy (fun (userId, _) -> userId)
+                        |> List.map (fun (userId, items) -> userId |> userName userDic, items |> List.sumBy snd)
+                        |> List.sortBy snd
+                        |> List.rev
+                        |> List.map (fun (UserName userName, points) -> sprintf "- %s points for %s" (sprintf "%i" points |> boldItalic) (userName |> bold))
+                | None -> ()
+            else () // should never happen
+        | None -> () // should never happen
+    ]
+    match lines with
+    | [] ->
+        if detailsEntered then yield nothingToSeeHere |> Markdown |> notificationContentFromMarkdown theme
+        else yield (sprintf "%s...yet" nothingToSeeHere) |> italic |> Markdown |> notificationContentFromMarkdown theme
+    | _ -> yield lines |> concatenateLines |> Markdown |> notificationContentFromMarkdown theme
+]
 
 let private renderAddPostModal (useDefaultTheme, addPostState:AddPostState) dispatch =
     let theme = getTheme useDefaultTheme
@@ -118,6 +229,48 @@ let private renderRemovePostModal (useDefaultTheme, postDic:PostDic, removePostS
             [ str "Remove post" ] |> button theme { buttonLinkSmall with Interaction = confirmInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
+// TODO-2026: Ability to add / edit / remove custom message?...
+
+let private renderAutoFixture theme _authUser userDic fixtureDic squadDic _dispatch (fixtureID, fixture:Fixture) =
+    let fixtureStatus = fixtureStatus fixtureDic fixtureID
+    let semantic, infoOrWarning, detailsEntered =
+        match fixtureStatus with
+        | Some NotStarted | Some NotConfirmed | None -> None, None, false
+        | Some DetailsPending -> Some Dark, Some RESULT_PENDING, false
+        | Some DetailsOverdue -> Some Warning, Some RESULT_OVERDUE, false
+        | Some (DetailsMissing _) -> Some Warning, Some RESULT_HAS_MISSING_DETAILS, false
+        | Some DetailsEntered -> Some Success, None, true
+    let renderChildren () = [
+        let kickOffText =
+#if TICK
+                ago fixture.KickOff.LocalDateTime
+#else
+                fixture.KickOff.LocalDateTime |> dateAndTimeText
+#endif
+        yield [ str kickOffText ] |> para theme { paraDefaultSmallest with ParaAlignment = RightAligned }
+        yield! renderAutoFixtureHeader theme squadDic fixture
+        match infoOrWarning with
+        | Some infoOrWarning -> yield infoOrWarning |> boldItalic |> Markdown |> notificationContentFromMarkdown theme
+        | None -> ()
+        match fixture.CustomMessage with
+        | Some (userId, customMessageText) ->
+            let (UserName userName) = userId |> userName userDic
+            yield! [
+                [ strong userName ; str " wrote" ] |> para theme paraDefaultSmallest
+                customMessageText |> notificationContentFromMarkdown theme
+            ]
+        | None -> ()
+        yield! renderAutoFixtureContent theme userDic detailsEntered squadDic fixture
+    ]
+    match semantic with
+    | Some semantic ->
+        let children = renderChildren ()
+        [
+            divVerticalSpace 10
+            notification theme { notificationDefault with NotificationSemantic = semantic |> Some } children
+        ]
+    | None -> []
+
 let private renderPost theme authUser userDic dispatch (postId, post) =
     let editOrRemovePost =
         match post.Removed, authUser with
@@ -132,7 +285,7 @@ let private renderPost theme authUser userDic dispatch (postId, post) =
                 | Some _ | None -> None
             | None -> None
         | _ -> None
-    let renderChildren post = [
+    let renderChildren () = [
         let rightItem =
             let timestampText =
 #if TICK
@@ -154,10 +307,10 @@ let private renderPost theme authUser userDic dispatch (postId, post) =
         yield messageText |> notificationContentFromMarkdown theme
         match editOrRemovePost with
         | Some (editPost, removePost) ->
-        yield level true [ levelLeft [ levelItem [ editPost ] ] ; levelRight [ levelItem [ removePost ] ] ]
+            yield level true [ levelLeft [ levelItem [ editPost ] ] ; levelRight [ levelItem [ removePost ] ] ]
         | None -> () ]
     let semantic = if post.Removed then Light else Black
-    let children = renderChildren post
+    let children = renderChildren ()
     let onDismissNotification = if post.Removed then (fun _ -> postId |> DismissPost |> dispatch) |> Some else None
     [
         divVerticalSpace 10
@@ -175,7 +328,7 @@ let private addPost theme authUser dispatch =
         | None -> None
     | None -> None
 
-let render (useDefaultTheme, state, authUser:AuthUser option, usersProjection:Projection<_ * UserDic>, hasModal, _:int<tick>) dispatch =
+let render (useDefaultTheme, state, authUser:AuthUser option, usersProjection:Projection<_ * UserDic>, fixturesProjection:Projection<_ * FixtureDic>, squadsProjection:Projection<_ * SquadDic>, hasModal, _:int<tick>) dispatch =
     let theme = getTheme useDefaultTheme
     columnContent [
         yield [ strong "News" ] |> para theme paraCentredSmall
@@ -206,11 +359,33 @@ let render (useDefaultTheme, state, authUser:AuthUser option, usersProjection:Pr
                 yield div divDefault [ lazyViewOrHMR2 renderRemovePostModal (useDefaultTheme, postDic, removePostState) (RemovePostInput >> dispatch) ]
             | _ -> ()
             yield RctH.ofOption (addPost theme authUser dispatch)
-            yield! postDic
-                |> List.ofSeq
-                |> List.map (fun (KeyValue (postId, post)) -> (postId, post))
-                |> List.sortBy (fun (_, post) -> post.Timestamp)
+            let posts = postDic |> List.ofSeq |> List.map (fun (KeyValue (postId, post)) -> post.Timestamp.LocalDateTime, News (postId, post))
+            let all =
+                match fixturesProjection, squadsProjection with
+                | Ready (_, fixtureDic), Ready _ ->
+                    let earliestTimeStamp = match posts |> List.sortBy fst with | (timestamp, _) :: _ -> Some timestamp | [] -> None
+                    let now = DateTime.Now
+                    let autoFixtures =
+                        fixtureDic
+                        |> List.ofSeq
+                        |> List.choose (fun (KeyValue (fixtureId, fixture)) ->
+                            let local = fixture.KickOff.LocalDateTime
+                            if local <= now then
+                                match earliestTimeStamp with
+                                | Some earliest -> if local >= earliest then Some (local, AutoFixture (fixtureId, fixture)) else None
+                                | None -> None
+                            else None)
+                    autoFixtures @ posts
+                | _ -> posts
+            yield! all
+                |> List.sortBy fst
                 |> List.rev
-                |> List.map (renderPost theme authUser userDic dispatch)
+                |> List.choose (fun (_, newsType) ->
+                    match newsType with
+                    | News (postId, post) -> Some (renderPost theme authUser userDic dispatch (postId, post))
+                    | AutoFixture (fixtureId, fixture) ->
+                        match fixturesProjection, squadsProjection with
+                        | Ready (_, fixtureDic), Ready (_, squadDic) -> Some (renderAutoFixture theme authUser userDic fixtureDic squadDic dispatch (fixtureId, fixture))
+                        | _ -> None)
                 |> List.collect id
             yield! morePosts ]

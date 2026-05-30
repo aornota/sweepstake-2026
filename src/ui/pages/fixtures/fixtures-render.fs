@@ -440,50 +440,6 @@ let private startsIn (_timestamp:DateTime) : Fable.React.ReactElement option =
     None
 #endif
 
-let private stageText stage =
-    match stage with
-    | Group group -> group |> groupText
-    | RoundOf32 matchNumber -> sprintf "Round of 32 (match %i)" matchNumber
-    | RoundOf16 matchNumber -> sprintf "Round of 16 (match %i)" matchNumber
-    | QuarterFinal quarterFinalOrdinal -> sprintf "Quarter-final %i" quarterFinalOrdinal
-    | SemiFinal semiFinalOrdinal -> sprintf "Semi-final %i" semiFinalOrdinal
-    | ThirdPlacePlayOff -> "Third place play-off"
-    | Final -> "Final"
-
-let private confirmedFixtureDetails (squadDic:SquadDic) fixture =
-    match fixture.HomeParticipant, fixture.AwayParticipant, fixture.MatchResult with
-    | Confirmed homeSquadId, Confirmed awaySquadId, Some matchResult ->
-        let matchOutcome, homeScoreEvents, awayScoreEvents, matchEvents = matchResult.MatchOutcome, matchResult.HomeScoreEvents, matchResult.AwayScoreEvents, matchResult.MatchEvents
-        let winnerSquadId, penaltyShootoutText =
-            match matchOutcome.PenaltyShootoutOutcome with
-            | Some penaltyShootoutOutcome ->
-                if penaltyShootoutOutcome.HomeScore > penaltyShootoutOutcome.AwayScore then
-                    let (SquadName squadName) = homeSquadId |> squadName squadDic
-                    let penaltyShootoutText = sprintf "%s win %i - %i on penalities" squadName penaltyShootoutOutcome.HomeScore penaltyShootoutOutcome.AwayScore
-                    homeSquadId |> Some, penaltyShootoutText |> Some
-                else if penaltyShootoutOutcome.AwayScore > penaltyShootoutOutcome.HomeScore then
-                    let (SquadName squadName) = awaySquadId |> squadName squadDic
-                    let penaltyShootoutText = sprintf "%s win %i - %i on penalities" squadName penaltyShootoutOutcome.AwayScore penaltyShootoutOutcome.HomeScore
-                    awaySquadId |> Some, penaltyShootoutText |> Some
-                else None, None // note: should never happen
-            | None ->
-                if matchOutcome.HomeGoals > matchOutcome.AwayGoals then homeSquadId |> Some, None
-                else if matchOutcome.AwayGoals > matchOutcome.HomeGoals then awaySquadId |> Some, None
-                else None, None
-        let homeIsWinner, homeName, homeGoals =
-            let (SquadName squadName) = homeSquadId |> squadName squadDic
-            homeSquadId |> Some = winnerSquadId, squadName, matchOutcome.HomeGoals
-        let awayIsWinner, awayName, awayGoals =
-            let (SquadName squadName) = awaySquadId |> squadName squadDic
-            awaySquadId |> Some = winnerSquadId, squadName, matchOutcome.AwayGoals
-        let teams = (homeSquadId, homeName, awaySquadId, awayName) |> Some
-        let result = (homeIsWinner, homeGoals, awayIsWinner, awayGoals, penaltyShootoutText, homeScoreEvents, awayScoreEvents, matchEvents) |> Some
-        teams, result
-    | Confirmed homeSquadId, Confirmed awaySquadId, None ->
-        let (SquadName homeName), (SquadName awayName) = homeSquadId |> squadName squadDic, awaySquadId |> squadName squadDic
-        (homeSquadId, homeName, awaySquadId, awayName) |> Some, None
-    | _ -> None, None
-
 let private teamEvents theme fixtureId role forSquadId hasShootout matchEvents canAdministerResults (squadDic:SquadDic) dispatch =
     let isHome = match role with | Home -> true | Away -> false
     let paraEvent = if isHome then { paraDefaultSmallest with ParaAlignment = RightAligned } else paraDefaultSmallest
@@ -562,8 +518,6 @@ let private addLinks theme fixtureId role forSquadId opponentSquadId opponentGoa
         yield RctH.ofOption addManOfTheMatch
     ]
 
-// TODO-2026: Ability to add "custom post message" - but maybe via News view (i.e. of "derived" post for Fixture) instead?...
-
 let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squadDic:SquadDic) (_userDic:UserDic) authUser dispatch =
     let theme = getTheme useDefaultTheme
     let canAdministerResults = match authUser with | Some authUser -> authUser.Permissions.ResultsAdminPermission | None -> false
@@ -597,7 +551,7 @@ let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squ
         let homeAddLinks = if canAdministerResults then addLinks theme fixtureId Home homeSquadId awaySquadId awayGoals hasShootout matchEvents dispatch else []
         let awayAddLinks = if canAdministerResults then addLinks theme fixtureId Away awaySquadId homeSquadId homeGoals hasShootout matchEvents dispatch else []
         [
-            yield [ str (fixture.Stage |> stageText) ] |> para theme paraCentredSmaller
+            yield [ str (fixture.Stage |> stageText true) ] |> para theme paraCentredSmaller
             yield [ str dateAndTime ] |> para theme paraCentredSmallest
             yield divVerticalSpace 10
             yield columnsLeftAndRight [ homeOutcome ] [ awayOutcome ]
@@ -636,9 +590,6 @@ let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squ
                 yield divVerticalSpace 10
             if homeAddLinks.Length + awayAddLinks.Length > 0 then
                 yield columnsLeftAndRight homeAddLinks awayAddLinks
-
-            // TODO-SOON: Points-4-sweepstakers? "Special" News post?...
-
         ]
     | _ -> [] // note: should never happen
 
@@ -711,8 +662,8 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
     let stageElement stage =
         let stageText =
             match stage with
-            | Group _ -> match currentFixtureFilter with | GroupFixtures _ | Fixture _ -> None | AllFixtures | KnockoutFixtures -> stage |> stageText |> Some
-            | _ -> stage |> stageText |> Some
+            | Group _ -> match currentFixtureFilter with | GroupFixtures _ | Fixture _ -> None | AllFixtures | KnockoutFixtures -> stage |> stageText true |> Some
+            | _ -> stage |> stageText true |> Some
         match stageText with | Some stageText -> [ str stageText ] |> para theme paraDefaultSmallest |> Some | None -> None
     let details fixture =
         match fixture |> confirmedFixtureDetails squadDic with
@@ -757,21 +708,27 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
             | None -> None
         | Some NotConfirmed -> [ em "Pending confirmation of participants" ] |> para theme paraWarning |> Some
         | Some DetailsPending ->
-            if canAdministerResults then [ [ str "Add details" ] |> para theme paraRight ] |> link theme (Internal onClick) |> Some
-            else [ strongEm "Result pending" ] |> para theme paraGrey |> Some
+            if canAdministerResults then
+                let extra =
+                    [
+                        [ strongEm RESULT_PENDING ] |> para theme paraGrey
+                        [ [ str "Add details" ] |> para theme paraRight ] |> link theme (Internal onClick)
+                    ]
+                extra |> div divDefault |> Some
+            else [ strongEm RESULT_PENDING ] |> para theme paraGrey |> Some
         | Some DetailsOverdue ->
             if canAdministerResults then
                 let extra =
                     [
-                        [ strongEm "Result overdue" ] |> para theme paraWarning
+                        [ strongEm RESULT_OVERDUE ] |> para theme paraWarning
                         [ [ str "Add details" ] |> para theme paraRight ] |> link theme (Internal onClick)
                     ]
                 extra |> div divDefault |> Some
-            else [ strongEm "Result overdue" ] |> para theme paraWarning |> Some
+            else [ strongEm RESULT_OVERDUE ] |> para theme paraWarning |> Some
         | Some (DetailsMissing _) ->
             let extra =
                 [
-                    [ strongEm "Result has missing dctails" ] |> para theme paraWarning
+                    [ strongEm RESULT_HAS_MISSING_DETAILS ] |> para theme paraWarning
                     [ [ str showEditOrViewDetailsText ] |> para theme paraRight ] |> link theme (Internal onClick)
                 ]
             extra |> div divDefault |> Some

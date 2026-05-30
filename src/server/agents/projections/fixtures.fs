@@ -9,6 +9,7 @@ module Aornota.Sweepstake2026.Server.Agents.Projections.Fixtures
 
 open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.Squad
+open Aornota.Sweepstake2026.Common.Domain.User
 open Aornota.Sweepstake2026.Common.Markdown
 open Aornota.Sweepstake2026.Common.Revision
 open Aornota.Sweepstake2026.Common.UnitsOfMeasure
@@ -39,7 +40,7 @@ type private FixtureInput =
 
 type private MatchEventDic = Dictionary<MatchEventId, MatchEvent>
 
-type private Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventDic : MatchEventDic ; CustomMessageText : Markdown option }
+type private Fixture = { Rvn : Rvn ; Stage : Stage ; HomeParticipant : Participant ; AwayParticipant : Participant ; KickOff : DateTimeOffset ; MatchEventDic : MatchEventDic ; CustomMessage : (UserId * Markdown) option }
 type private FixtureDic = Dictionary<FixtureId, Fixture>
 
 type private SquadDic = Dictionary<SquadId, Seeding option>
@@ -199,7 +200,7 @@ let private fixtureDto (squadDic:SquadDic) (playerDic:PlayerDic) (fixtureId, fix
             { MatchOutcome = matchOutcome ; HomeScoreEvents = homeScoreEvents ; AwayScoreEvents = awayScoreEvents ; MatchEvents = matchEvents } |> Some
         | None -> None
     { FixtureId = fixtureId ; Rvn = fixture.Rvn ; Stage = fixture.Stage ; HomeParticipant = fixture.HomeParticipant ; AwayParticipant = fixture.AwayParticipant ; KickOff = fixture.KickOff
-      MatchResult = matchResult ; CustomMessageText = fixture.CustomMessageText }
+      MatchResult = matchResult ; CustomMessage = fixture.CustomMessage }
 
 let private fixtureDtoDic (squadDic:SquadDic) (playerDic:PlayerDic) (fixtureDic:FixtureDic) =
     let fixtureDtoDic = FixtureDtoDic ()
@@ -271,8 +272,9 @@ let private ifAllRead source (fixturesRead:(FixtureRead list) option, squadsRead
             let matchEventDic = MatchEventDic ()
             fixtureRead.MatchEventsRead |> List.iter (fun matchEventRead ->
                 if matchEventRead.MatchEventId |> matchEventDic.ContainsKey |> not then (matchEventRead.MatchEventId, matchEventRead.MatchEvent) |> matchEventDic.Add)
-            let fixture = { Rvn = fixtureRead.Rvn ; Stage = fixtureRead.Stage ; HomeParticipant = fixtureRead.HomeParticipant ; AwayParticipant = fixtureRead.AwayParticipant
-                            KickOff = fixtureRead.KickOff ; MatchEventDic = matchEventDic ; CustomMessageText = fixtureRead.CustomMessageText }
+            let fixture =
+                { Rvn = fixtureRead.Rvn ; Stage = fixtureRead.Stage ; HomeParticipant = fixtureRead.HomeParticipant ; AwayParticipant = fixtureRead.AwayParticipant
+                  KickOff = fixtureRead.KickOff ; MatchEventDic = matchEventDic ; CustomMessage = fixtureRead.CustomMessage }
             (fixtureRead.FixtureId, fixture) |> fixtureDic.Add)
         let squadDic = SquadDic ()
         let playerDic = PlayerDic ()
