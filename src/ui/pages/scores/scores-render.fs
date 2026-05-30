@@ -110,8 +110,19 @@ let private renderStandings (useDefaultTheme, users:(UserId * UserName) list, sq
         let previousRankAndPoints =
             match latestResult with
             | Some latestResult ->
+                let latestForPreviousMatchdays =
+                    fixtureDic
+                    |> List.ofSeq
+                    |> List.choose (fun (KeyValue (_, fixture)) -> if fixture.KickOff <= latestResult then Some fixture.KickOff else None)
+                    |> List.sort
+                    |> List.pairwise
+                    |> List.choose (fun (kickOff, nextKickOff) -> if (nextKickOff - kickOff).TotalHours >= 12. then Some kickOff else None)
                 let previousFixtureDic = FixtureDic ()
-                fixtureDic |> List.ofSeq |> List.iter (fun (KeyValue (fixtureId, fixture)) -> if fixture.KickOff < latestResult then (fixtureId, fixture) |> previousFixtureDic.Add)
+                match latestForPreviousMatchdays with
+                | [] -> ()
+                | _ ->
+                    let previousLatest = latestForPreviousMatchdays |> List.max
+                    fixtureDic |> List.ofSeq |> List.iter (fun (KeyValue (fixtureId, fixture)) -> if fixture.KickOff <= previousLatest then (fixtureId, fixture) |> previousFixtureDic.Add)
                 let mutable previousRank = 1
                 let mutable previousPoints : int<point> option = None
                 users

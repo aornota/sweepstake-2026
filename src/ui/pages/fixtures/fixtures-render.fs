@@ -562,7 +562,7 @@ let private addLinks theme fixtureId role forSquadId opponentSquadId opponentGoa
         yield RctH.ofOption addManOfTheMatch
     ]
 
-// TODO-2026: Ability to add custom message text (i.e. for auto-post) - but only if no missing match events?...
+// TODO-2026: Ability to add "custom post message" - but maybe via News view (i.e. of "derived" post for Fixture) instead?...
 
 let private renderFixture useDefaultTheme fixtureId (fixtureDic:FixtureDic) (squadDic:SquadDic) (_userDic:UserDic) authUser dispatch =
     let theme = getTheme useDefaultTheme
