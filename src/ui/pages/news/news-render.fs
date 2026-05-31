@@ -2,6 +2,7 @@ module Aornota.Sweepstake2026.Ui.Pages.News.Render
 
 open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.News
+open Aornota.Sweepstake2026.Common.Domain.Squad
 open Aornota.Sweepstake2026.Common.Domain.User
 open Aornota.Sweepstake2026.Common.Markdown
 open Aornota.Sweepstake2026.Common.UnitsOfMeasure
@@ -63,6 +64,47 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
         if points > 0<point> then sprintf "+%i" points |> bold
         else if points = 0<point> then "0"
         else sprintf "%i" points |> italic
+    let cardsText (cards:(Card * int<point>) list) =
+        let points = cards |> List.sumBy snd
+        let yellowCount = cards |> List.filter (fun (card, _) -> match card with | Yellow | SecondYellow -> true | Red -> false) |> List.length
+        let redCount = cards |> List.filter (fun (card, _) -> match card with | Yellow | SecondYellow -> false | Red -> true) |> List.length
+        let text =
+            match yellowCount, redCount with
+            | 1, 0 -> "yellow card"
+            | 0, 1 -> "red card"
+            | _, 0 -> "yellow cards"
+            | 0, _ -> "red cards"
+            | _ -> "yellow and red cards"
+        sprintf "%s (%s)" text (plusOrMinus points)
+    let teamScoreEventLines (items:(Squad * TeamScoreEvent * int<point>) list) =
+        let lines =
+            [
+                match items |> List.filter (fun (_, teamScoreEvent, _) -> match teamScoreEvent with | MatchWon -> true | _ -> false) with
+                | (squad, _, points) :: _ -> yield squad, sprintf "win (%s)" (plusOrMinus points)
+                | _ -> ()
+                match items |> List.filter (fun (_, teamScoreEvent, _) -> match teamScoreEvent with | MatchDrawn -> true | _ -> false) with
+                | (squad, _, points) :: _ -> yield squad, sprintf "draw (%s)" (plusOrMinus points)
+                | _ -> ()
+                match items |> List.choose (fun (squad, teamScoreEvent, points) -> match teamScoreEvent with | PlayerCard (_, card) -> Some (squad, card, points) | _ -> None) with
+                | [] -> ()
+                | cardItems ->
+                    yield!
+                        cardItems
+                        |> List.groupBy (fun (squad, _, _) -> squad)
+                        |> List.map (fun (squad, items) ->
+                            let text = items |> List.map (fun (_, card, points) -> card, points) |> cardsText
+                            squad, text)
+            ]
+        lines
+        |> List.groupBy fst
+        |> List.map (fun (squad, items) ->
+            let (SquadName squadName) = squad.SquadName
+            let concatenated = items |> List.map snd |> concatenate
+            sprintf "%s: %s" squadName concatenated)
+        |> List.sort
+
+    // TODO-NMB...let playerScoreEventLines...
+
     let nothingToSeeHere = "Nothing to see here"
     let teams, _ = fixture |> confirmedFixtureDetails squadDic
     let lines = [
@@ -107,10 +149,8 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
                         |> List.groupBy (fun (userId, _, _, _) -> userId)
                         |> List.map (fun (userId, items) ->
                             let points = items |> List.sumBy (fun (_, _, _, points) -> points)
-
-                            // TODO-NMB: Squad and TeamScoreEvent descriptions...
-
-                            userId, points)
+                            let teamScoreEventLines = items |> List.map (fun (_, squad, teamScoreEvent, points) -> squad, teamScoreEvent, points) |> teamScoreEventLines
+                            userId, points, teamScoreEventLines)
                     let userPlayerScores =
                         playerScoreEvents
                         |> List.groupBy (fun (userId, _, _) -> userId)
@@ -118,15 +158,25 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
                             let points = items |> List.sumBy (fun (_, _, subItems) -> subItems |> List.sumBy snd)
 
                             // TODO-NMB: Player and PlayerScoreEvent descriptions...
+                            let playerScoreEventLines = []
 
-                            userId, points)
+                            userId, points, playerScoreEventLines)
                     yield!
                         userTeamScores @ userPlayerScores
-                        |> List.groupBy (fun (userId, _) -> userId)
-                        |> List.map (fun (userId, items) -> userId |> userName userDic, items |> List.sumBy snd)
-                        |> List.sortBy snd
+                        |> List.groupBy (fun (userId, _, _) -> userId)
+                        |> List.map (fun (userId, items) ->
+                            let points = items |> List.map (fun (_, points, _) -> points) |> List.sum
+                            let eventLines = items |> List.map (fun (_, _, eventLines) -> eventLines) |> List.collect id
+                            userId |> userName userDic, points, eventLines)
+                        |> List.sortBy (fun (_, points, _) -> points)
                         |> List.rev
-                        |> List.map (fun (UserName userName, points) -> sprintf "- %s points for %s" (points |> plusOrMinus) (userName |> bold))
+                        |> List.map (fun (UserName userName, points, eventLines) ->
+                            [
+                                yield sprintf "- %s points for %s" (points |> plusOrMinus) (userName |> bold)
+                                yield! eventLines |> List.map (fun eventLine -> sprintf "    - %s" eventLine)
+                            ])
+                        |> List.collect id
+
                 | None -> ()
             else () // should never happen
         | None -> () // should never happen
