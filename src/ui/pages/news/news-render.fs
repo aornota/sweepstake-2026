@@ -138,6 +138,79 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
     | _ -> yield lines |> concatenateLines |> Markdown |> notificationContentFromMarkdown theme
 ]
 
+let private renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic squadDic (userAndCustomMessage:(UserName option * string) option) addCustomMessage editOrRemoveCustomMessage =
+    let fixtureStatus = fixtureStatus fixtureDic fixtureId
+    let semantic, infoOrWarning, detailsEntered =
+        match fixtureStatus with
+        | Some NotStarted | Some NotConfirmed | None -> None, None, false
+        | Some DetailsPending -> Some Dark, Some RESULT_PENDING, false
+        | Some DetailsOverdue -> Some Warning, Some RESULT_OVERDUE, false
+        | Some (DetailsMissing _) -> Some Warning, Some RESULT_HAS_MISSING_DETAILS, false
+        | Some DetailsEntered -> Some Success, None, true
+    let children = [
+        let kickOffText =
+#if TICK
+                ago fixture.KickOff.LocalDateTime
+#else
+                fixture.KickOff.LocalDateTime |> dateAndTimeText
+#endif
+        yield [ str kickOffText ] |> para theme { paraDefaultSmallest with ParaAlignment = RightAligned }
+        yield! renderAutoFixtureHeader theme squadDic fixture
+        match infoOrWarning with
+        | Some infoOrWarning -> yield infoOrWarning |> boldItalic |> Markdown |> notificationContentFromMarkdown theme
+        | None -> ()
+        match userAndCustomMessage with
+        | Some (userName, customMessage) ->
+            yield! [
+                match userName with
+                | Some (UserName userName) ->
+                    yield [ strong userName ; str " wrote" ] |> para theme paraDefaultSmallest
+                | None -> ()
+                if String.IsNullOrWhiteSpace customMessage |> not then yield customMessage |> Markdown |> notificationContentFromMarkdown theme
+            ]
+            match editOrRemoveCustomMessage with
+            | Some (editCustomMessage, removeCustomMessage) ->
+                yield level true [ levelLeft [ levelItem [ editCustomMessage ] ] ; levelRight [ levelItem [ removeCustomMessage ] ] ]
+            | None -> ()
+        | None ->
+            match addCustomMessage with
+            | Some addCustomMessage -> yield level true [ levelLeft [ levelItem [ addCustomMessage ] ] ]
+            | None -> ()
+        yield! renderAutoFixtureContent theme userDic detailsEntered squadDic fixture
+    ]
+    match semantic with
+    | Some semantic -> notification theme { notificationDefault with NotificationSemantic = semantic |> Some } children |> Some
+    | None -> None
+
+let private renderPostCommon theme semantic (userAndTimestamp:(UserName * DateTimeOffset) option) message editOrRemovePost onDismissNotification =
+    let children = [
+        let rightItem =
+            match userAndTimestamp with
+            | Some (_, timestamp) ->
+                let timestampText =
+#if TICK
+                    ago timestamp.LocalDateTime
+#else
+                    timestamp.LocalDateTime |> dateAndTimeText
+#endif
+                [ str timestampText ] |> para theme paraDefaultSmallest |> Some
+            | None -> None
+        yield level true [
+            match userAndTimestamp with
+            | Some (UserName userName, _) -> yield levelLeft [ levelItem [ [ strong userName ; str " posted" ] |> para theme paraDefaultSmallest ] ]
+            | None -> ()
+            match rightItem with
+            | Some rightItem -> yield levelRight [ levelItem [ rightItem ] ]
+            | None -> ()
+        ]
+        if String.IsNullOrWhiteSpace message |> not then yield message |> Markdown |> notificationContentFromMarkdown theme
+        match editOrRemovePost with
+        | Some (editPost, removePost) ->
+            yield level true [ levelLeft [ levelItem [ editPost ] ] ; levelRight [ levelItem [ removePost ] ] ]
+        | None -> ()
+    ]
+    notification theme { notificationDefault with NotificationSemantic = semantic |> Some ; OnDismissNotification = onDismissNotification } children
+
 let private renderAddPostModal (useDefaultTheme, addPostState:AddPostState) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Add post" ] |> para theme paraCentredSmall ]
@@ -163,16 +236,19 @@ let private renderAddPostModal (useDefaultTheme, addPostState:AddPostState) disp
         | None -> ()
         yield field theme { fieldDefault with Grouped = FullWidth |> Some } [
             yield textArea theme newPostKey newMessage addPostState.NewMessageErrorText helpInfo true isAddingPost (NewMessageChanged >> AddPostInput >> dispatch)
-            let children = [
-                if String.IsNullOrWhiteSpace newMessage |> not then yield Markdown newMessage |> notificationContentFromMarkdown theme
-            ]
-            yield notification theme notificationBlack children ]
+            yield renderPostCommon theme Black None newMessage None None ]
         yield field theme { fieldDefault with Grouped = RightAligned |> Some } [ [ str "Add post" ] |> button theme { buttonLinkSmall with Interaction = addPostInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
-let private renderEditPostModal (useDefaultTheme, editPostState:EditPostState) dispatch =
+let private renderEditPostModal (useDefaultTheme, postDic:PostDic, editPostState:EditPostState, userDic) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Edit post" ] |> para theme paraCentredSmall ]
+    let postId = editPostState.PostId
+    let post = if postId |> postDic.ContainsKey then postDic.[postId] |> Some else None
+    let userAndTimestamp =
+        match post with
+        | Some post -> (post.UserId |> userName userDic, post.Timestamp) |> Some
+        | None -> None // should never happen
     let onDismiss = match editPostState.EditPostStatus with | Some EditPostPending -> None | Some _ | None -> (fun _ -> CancelEditPost |> EditPostInput |> dispatch) |> Some
     let isEditingPost, editPostInteraction =
         match editPostState.EditPostStatus with
@@ -195,22 +271,21 @@ let private renderEditPostModal (useDefaultTheme, editPostState:EditPostState) d
         | None -> ()
         yield field theme { fieldDefault with Grouped = FullWidth |> Some } [
             yield textArea theme postKey message editPostState.MessageErrorText helpInfo true isEditingPost (MessageChanged >> EditPostInput >> dispatch)
-            let children = [
-                if String.IsNullOrWhiteSpace message |> not then yield Markdown message |> notificationContentFromMarkdown theme
-            ]
-            yield notification theme notificationBlack children ]
+            yield renderPostCommon theme Black userAndTimestamp message None None ]
         yield field theme { fieldDefault with Grouped = RightAligned |> Some } [ [ str "Edit post" ] |> button theme { buttonLinkSmall with Interaction = editPostInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
-let private renderRemovePostModal (useDefaultTheme, postDic:PostDic, removePostState:RemovePostState) dispatch =
+let private renderRemovePostModal (useDefaultTheme, postDic:PostDic, removePostState:RemovePostState, userDic) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Remove post" ] |> para theme paraCentredSmall ]
     let postId = removePostState.PostId
     let post = if postId |> postDic.ContainsKey then postDic.[postId] |> Some else None
-    let messageText =
+    let message, userAndTimestamp =
         match post with
-        | Some post -> post.Message
-        | None -> Markdown String.Empty
+        | Some post ->
+            let (Markdown message) = post.Message
+            message, (post.UserId |> userName userDic, post.Timestamp) |> Some
+        | None -> String.Empty, None // should never happen
     let confirmInteraction, onDismiss =
         let confirm = (fun _ -> ConfirmRemovePost |> dispatch)
         let cancel = (fun _ -> CancelRemovePost |> dispatch)
@@ -230,17 +305,17 @@ let private renderRemovePostModal (useDefaultTheme, postDic:PostDic, removePostS
         | None -> ()
         yield notification theme notificationWarning warning
         yield br
-        yield notification theme notificationLight [ messageText |> notificationContentFromMarkdown theme ]
+        yield renderPostCommon theme Light userAndTimestamp message None None
         yield br
         yield field theme { fieldDefault with Grouped = Centred |> Some } [
             [ str "Remove post" ] |> button theme { buttonLinkSmall with Interaction = confirmInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
-// TODO-2026: Include "auto-fixture" stuff in previews for custom message modals?...
-
-let private renderAddCustomMessageModal (useDefaultTheme, addCustomMessageState:AddCustomMessageState) dispatch =
+let private renderAddCustomMessageModal (useDefaultTheme, addCustomMessageState:AddCustomMessageState, userDic, fixtureDic:FixtureDic, squadDic) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Add custom message" ] |> para theme paraCentredSmall ]
+    let fixtureId = addCustomMessageState.FixtureId
+    let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
     let onDismiss = match addCustomMessageState.AddCustomMessageStatus with | Some AddCustomMessagePending -> None | Some _ | None -> (fun _ -> CancelAddCustomMessage |> AddCustomMessageInput |> dispatch) |> Some
     let isAddingCustomMessage, addCustomMessageInteraction =
         match addCustomMessageState.AddCustomMessageStatus with
@@ -263,16 +338,20 @@ let private renderAddCustomMessageModal (useDefaultTheme, addCustomMessageState:
         | None -> ()
         yield field theme { fieldDefault with Grouped = FullWidth |> Some } [
             yield textArea theme newCustomMessageKey newCustomMessage addCustomMessageState.NewCustomMessageErrorText helpInfo true isAddingCustomMessage (NewCustomMessageChanged >> AddCustomMessageInput >> dispatch)
-            let children = [
-                if String.IsNullOrWhiteSpace newCustomMessage |> not then yield Markdown newCustomMessage |> notificationContentFromMarkdown theme
-            ]
-            yield notification theme notificationBlack children ]
+            match fixture with
+            | Some fixture ->
+                match renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic squadDic ((None, newCustomMessage) |> Some) None None with
+                | Some autoFixture -> yield autoFixture
+                | None -> ()
+            | None -> () ]
         yield field theme { fieldDefault with Grouped = RightAligned |> Some } [ [ str "Add custom message" ] |> button theme { buttonLinkSmall with Interaction = addCustomMessageInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
-let private renderEditCustomMessageModal (useDefaultTheme, editCustomMessageState:EditCustomMessageState) dispatch =
+let private renderEditCustomMessageModal (useDefaultTheme, editCustomMessageState:EditCustomMessageState, userDic, fixtureDic:FixtureDic, squadDic) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Edit custom message" ] |> para theme paraCentredSmall ]
+    let fixtureId = editCustomMessageState.FixtureId
+    let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
     let onDismiss = match editCustomMessageState.EditCustomMessageStatus with | Some EditCustomMessagePending -> None | Some _ | None -> (fun _ -> CancelEditCustomMessage |> EditCustomMessageInput |> dispatch) |> Some
     let isEditingPost, editCustomMessageInteraction =
         match editCustomMessageState.EditCustomMessageStatus with
@@ -295,25 +374,31 @@ let private renderEditCustomMessageModal (useDefaultTheme, editCustomMessageStat
         | None -> ()
         yield field theme { fieldDefault with Grouped = FullWidth |> Some } [
             yield textArea theme customMessageKey customMessage editCustomMessageState.CustomMessageErrorText helpInfo true isEditingPost (CustomMessageChanged >> EditCustomMessageInput >> dispatch)
-            let children = [
-                if String.IsNullOrWhiteSpace customMessage |> not then yield Markdown customMessage |> notificationContentFromMarkdown theme
-            ]
-            yield notification theme notificationBlack children ]
+            match fixture with
+            | Some fixture ->
+                let userName =
+                    match fixture.CustomMessage with
+                    | Some (userId, _) -> userId |> userName userDic |> Some
+                    | None -> None // should never happen
+                match renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic squadDic ((userName, customMessage) |> Some) None None with
+                | Some autoFixture -> yield autoFixture
+                | None -> ()
+            | None -> () ]
         yield field theme { fieldDefault with Grouped = RightAligned |> Some } [ [ str "Edit custom message" ] |> button theme { buttonLinkSmall with Interaction = editCustomMessageInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
-let private renderRemoveCustomMessageModal (useDefaultTheme, fixtureDic:FixtureDic, removeCustomMessageState:RemoveCustomMessageState) dispatch =
+let private renderRemoveCustomMessageModal (useDefaultTheme, removeCustomMessageState:RemoveCustomMessageState, userDic, fixtureDic:FixtureDic, squadDic) dispatch =
     let theme = getTheme useDefaultTheme
     let title = [ [ strong "Remove custom message" ] |> para theme paraCentredSmall ]
     let fixtureId = removeCustomMessageState.FixtureId
     let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
-    let messageText =
+    let userAndCustomMessage = //(post.UserId |> userName userDic, post.Timestamp) |> Some
         match fixture with
         | Some fixture ->
             match fixture.CustomMessage with
-            | Some (_, customMessage) -> customMessage
-            | None -> Markdown String.Empty
-        | None -> Markdown String.Empty
+            | Some (userId, Markdown customMessage) -> (userId |> userName userDic |> Some, customMessage) |> Some
+            | None -> None
+        | None -> None
     let confirmInteraction, onDismiss =
         let confirm = (fun _ -> ConfirmRemoveCustomMessage |> dispatch)
         let cancel = (fun _ -> CancelRemoveCustomMessage |> dispatch)
@@ -330,21 +415,18 @@ let private renderRemoveCustomMessageModal (useDefaultTheme, fixtureDic:FixtureD
         | None -> ()
         yield notification theme notificationWarning warning
         yield br
-        yield notification theme notificationLight [ messageText |> notificationContentFromMarkdown theme ]
+        match fixture with
+        | Some fixture ->
+            match renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic squadDic userAndCustomMessage None None with
+            | Some autoFixture -> yield autoFixture
+            | None -> ()
+        | None -> ()
         yield br
         yield field theme { fieldDefault with Grouped = Centred |> Some } [
             [ str "Remove custom message" ] |> button theme { buttonLinkSmall with Interaction = confirmInteraction } ] ]
     cardModal theme (Some(title, onDismiss)) body
 
 let private renderAutoFixture theme authUser userDic fixtureDic squadDic dispatch (fixtureId, fixture:Fixture) =
-    let fixtureStatus = fixtureStatus fixtureDic fixtureId
-    let semantic, infoOrWarning, detailsEntered =
-        match fixtureStatus with
-        | Some NotStarted | Some NotConfirmed | None -> None, None, false
-        | Some DetailsPending -> Some Dark, Some RESULT_PENDING, false
-        | Some DetailsOverdue -> Some Warning, Some RESULT_OVERDUE, false
-        | Some (DetailsMissing _) -> Some Warning, Some RESULT_HAS_MISSING_DETAILS, false
-        | Some DetailsEntered -> Some Success, None, true
     let addCustomMessage =
         match fixture.CustomMessage, authUser with
         | None, Some authUser ->
@@ -368,42 +450,15 @@ let private renderAutoFixture theme authUser userDic fixtureDic squadDic dispatc
                 | Some _ | None -> None
             | None -> None
         | _ -> None
-    let renderChildren () = [
-        let kickOffText =
-#if TICK
-                ago fixture.KickOff.LocalDateTime
-#else
-                fixture.KickOff.LocalDateTime |> dateAndTimeText
-#endif
-        yield [ str kickOffText ] |> para theme { paraDefaultSmallest with ParaAlignment = RightAligned }
-        yield! renderAutoFixtureHeader theme squadDic fixture
-        match infoOrWarning with
-        | Some infoOrWarning -> yield infoOrWarning |> boldItalic |> Markdown |> notificationContentFromMarkdown theme
-        | None -> ()
-        //yield RctH.ofOption addCustomMessage
+    let userAndCustomMessage = //(post.UserId |> userName userDic, post.Timestamp) |> Some
         match fixture.CustomMessage with
-        | Some (userId, customMessageText) ->
-            let (UserName userName) = userId |> userName userDic
-            yield! [
-                [ strong userName ; str " wrote" ] |> para theme paraDefaultSmallest
-                customMessageText |> notificationContentFromMarkdown theme
-            ]
-            match editOrRemoveCustomMessage with
-            | Some (editCustomMessage, removeCustomMessage) ->
-                yield level true [ levelLeft [ levelItem [ editCustomMessage ] ] ; levelRight [ levelItem [ removeCustomMessage ] ] ]
-            | None -> ()
-        | None ->
-            match addCustomMessage with
-            | Some addCustomMessage -> yield level true [ levelLeft [ levelItem [ addCustomMessage ] ] ]
-            | None -> ()
-        yield! renderAutoFixtureContent theme userDic detailsEntered squadDic fixture
-    ]
-    match semantic with
-    | Some semantic ->
-        let children = renderChildren ()
+        | Some (userId, Markdown customMessage) -> (userId |> userName userDic |> Some, customMessage) |> Some
+        | None -> None
+    match renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic squadDic userAndCustomMessage addCustomMessage editOrRemoveCustomMessage with
+    | Some autoFixture ->
         [
             divVerticalSpace 10
-            notification theme { notificationDefault with NotificationSemantic = semantic |> Some } children
+            autoFixture
         ]
     | None -> []
 
@@ -421,34 +476,17 @@ let private renderPost theme authUser userDic dispatch (postId, post) =
                 | Some _ | None -> None
             | None -> None
         | _ -> None
-    let renderChildren () = [
-        let rightItem =
-            let timestampText =
-#if TICK
-                ago post.Timestamp.LocalDateTime
-#else
-                post.Timestamp.LocalDateTime |> dateAndTimeText
-#endif
-            [ str timestampText ] |> para theme paraDefaultSmallest
-        let (UserName userName) = post.UserId |> userName userDic
-        let message =
-            if post.Removed then Markdown REMOVED_MARKDOWN
-            else post.Message
-        yield level true [
-            levelLeft [ levelItem [ [ strong userName ; str " posted" ] |> para theme paraDefaultSmallest ] ]
-            levelRight [ levelItem [ rightItem ] ] ]
-        yield message |> notificationContentFromMarkdown theme
-        match editOrRemovePost with
-        | Some (editPost, removePost) ->
-            yield level true [ levelLeft [ levelItem [ editPost ] ] ; levelRight [ levelItem [ removePost ] ] ]
-        | None -> ()
-    ]
     let semantic = if post.Removed then Light else Black
-    let children = renderChildren ()
+    let userAndTimestamp = (post.UserId |> userName userDic, post.Timestamp) |> Some
+    let message =
+        if post.Removed then REMOVED_MARKDOWN
+        else
+            let (Markdown message) = post.Message
+            message
     let onDismissNotification = if post.Removed then (fun _ -> postId |> DismissPost |> dispatch) |> Some else None
     [
         divVerticalSpace 10
-        notification theme { notificationDefault with NotificationSemantic = semantic |> Some ; OnDismissNotification = onDismissNotification } children
+        renderPostCommon theme semantic userAndTimestamp message editOrRemovePost onDismissNotification
     ]
 
 let private addPost theme authUser dispatch =
@@ -486,24 +524,26 @@ let render (useDefaultTheme, state, authUser:AuthUser option, usersProjection:Pr
             | _ -> ()
             match hasModal, readyState.EditPostState with
             | false, Some editPostState ->
-                yield div divDefault [ lazyViewOrHMR2 renderEditPostModal (useDefaultTheme, editPostState) dispatch ]
+                yield div divDefault [ lazyViewOrHMR2 renderEditPostModal (useDefaultTheme, postDic,editPostState, userDic) dispatch ]
             | _ -> ()
             match hasModal, readyState.RemovePostState with
             | false, Some removePostState ->
-                yield div divDefault [ lazyViewOrHMR2 renderRemovePostModal (useDefaultTheme, postDic, removePostState) (RemovePostInput >> dispatch) ]
+                yield div divDefault [ lazyViewOrHMR2 renderRemovePostModal (useDefaultTheme, postDic, removePostState, userDic) (RemovePostInput >> dispatch) ]
             | _ -> ()
-            match hasModal, readyState.AddCustomMessageState with
-            | false, Some addCustomMessageState ->
-                yield div divDefault [ lazyViewOrHMR2 renderAddCustomMessageModal (useDefaultTheme, addCustomMessageState) dispatch ]
+            match hasModal, readyState.AddCustomMessageState, fixturesProjection, squadsProjection with
+            | false, Some addCustomMessageState, Ready (_, fixtureDic), Ready (_, squadDic) ->
+                yield div divDefault [ lazyViewOrHMR2 renderAddCustomMessageModal (useDefaultTheme, addCustomMessageState, userDic, fixtureDic, squadDic) dispatch ]
+            | false, Some _, _, _ -> () // should never happen
             | _ -> ()
-            match hasModal, readyState.EditCustomMessageState with
-            | false, Some editCustomMessageState ->
-                yield div divDefault [ lazyViewOrHMR2 renderEditCustomMessageModal (useDefaultTheme, editCustomMessageState) dispatch ]
+            match hasModal, readyState.EditCustomMessageState, fixturesProjection, squadsProjection with
+            | false, Some editCustomMessageState, Ready (_, fixtureDic), Ready (_, squadDic) ->
+                yield div divDefault [ lazyViewOrHMR2 renderEditCustomMessageModal (useDefaultTheme, editCustomMessageState, userDic, fixtureDic, squadDic) dispatch ]
+            | false, Some _, _, _ -> () // should never happen
             | _ -> ()
-            match hasModal, readyState.RemoveCustomMessageState, fixturesProjection with
-            | false, Some removeCustomMessageState, Ready (_, fixtureDic) ->
-                yield div divDefault [ lazyViewOrHMR2 renderRemoveCustomMessageModal (useDefaultTheme, fixtureDic, removeCustomMessageState) (RemoveCustomMessageInput >> dispatch) ]
-            | false, Some _, _ -> () // should never happen
+            match hasModal, readyState.RemoveCustomMessageState, fixturesProjection, squadsProjection with
+            | false, Some removeCustomMessageState, Ready (_, fixtureDic), Ready (_, squadDic) ->
+                yield div divDefault [ lazyViewOrHMR2 renderRemoveCustomMessageModal (useDefaultTheme, removeCustomMessageState, userDic, fixtureDic, squadDic) (RemoveCustomMessageInput >> dispatch) ]
+            | false, Some _, _, _ -> () // should never happen
             | _ -> ()
             yield RctH.ofOption (addPost theme authUser dispatch)
             let posts = postDic |> List.ofSeq |> List.map (fun (KeyValue (postId, post)) -> post.Timestamp.LocalDateTime, News (postId, post))
