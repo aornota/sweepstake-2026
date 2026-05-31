@@ -82,7 +82,7 @@ type FixtureDto =
 
 let [<Literal>] private MAX_CUSTOM_MESSAGE_LENGTH = 1000
 
-let validateCustomMessageText (Markdown messageText) =
+let validateCustomMessage (Markdown messageText) =
     if String.IsNullOrWhiteSpace messageText then "Custom message must not be blank" |> Some
     else if (messageText.Trim ()).Length > MAX_CUSTOM_MESSAGE_LENGTH then "Custom message is too long" |> Some
     else None

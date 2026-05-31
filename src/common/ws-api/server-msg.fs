@@ -107,6 +107,9 @@ type ServerNewsMsg =
     | CreatePostCmdResult of result : Result<unit, AuthCmdError<string>>
     | ChangePostCmdResult of result : Result<unit, AuthCmdError<string>>
     | RemovePostCmdResult of result : Result<unit, AuthCmdError<string>>
+    | AddCustomMessageCmdResult of result : Result<unit, AuthCmdError<string>>
+    | ChangeCustomMessageCmdResult of result : Result<unit, AuthCmdError<string>>
+    | RemoveCustomMessageCmdResult of result : Result<unit, AuthCmdError<string>>
     | NewsProjectionMsg of newsProjectionMsg : NewsProjectionMsg
 
 type ServerSquadsMsg =

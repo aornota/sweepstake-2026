@@ -7,12 +7,12 @@ open Aornota.Sweepstake2026.Common.Markdown
 open System
 
 type NewsEvent =
-    | PostCreated of postId : PostId * userId : UserId * postType : PostType * messageText : Markdown * timestamp : DateTimeOffset
-    | PostChanged of postId : PostId * messageText : Markdown
+    | PostCreated of postId : PostId * userId : UserId * message : Markdown * timestamp : DateTimeOffset
+    | PostChanged of postId : PostId * message : Markdown
     | PostRemoved of postId : PostId
     with
         member self.PostId =
             match self with
-            | PostCreated (postId, _, _, _, _) -> postId
+            | PostCreated (postId, _, _, _) -> postId
             | PostChanged (postId, _) -> postId
             | PostRemoved postId -> postId

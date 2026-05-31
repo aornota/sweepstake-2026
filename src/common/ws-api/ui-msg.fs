@@ -42,9 +42,12 @@ type UiAuthDraftAdminMsg =
     | ProcessDraftCmd of draftId : DraftId * currentRvn : Rvn
 
 type UiAuthNewsMsg =
-    | CreatePostCmd of postId : PostId * postType : PostType * messageText : Markdown
-    | ChangePostCmd of postId : PostId * currentRvn : Rvn * messageText : Markdown
+    | CreatePostCmd of postId : PostId * message : Markdown
+    | ChangePostCmd of postId : PostId * currentRvn : Rvn * message : Markdown
     | RemovePostCmd of postId : PostId * currentRvn : Rvn
+    | AddCustomMessageCmd of fixtureId : FixtureId * currentRvn : Rvn * customMessage : Markdown
+    | ChangeCustomMessageCmd of fixtureId : FixtureId * currentRvn : Rvn * customMessage : Markdown
+    | RemoveCustomMessageCmd of fixtureId : FixtureId * currentRvn : Rvn
 
 type UiAuthSquadsMsg =
     | AddPlayerCmd of squadId : SquadId * currentRvn : Rvn * playerId : PlayerId * playerName : PlayerName * playerType : PlayerType

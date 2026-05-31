@@ -1,6 +1,7 @@
 module Aornota.Sweepstake2026.Ui.Pages.News.State
 
 open Aornota.Sweepstake2026.Common.Delta
+open Aornota.Sweepstake2026.Common.Domain.Fixture
 open Aornota.Sweepstake2026.Common.Domain.News
 open Aornota.Sweepstake2026.Common.IfDebug
 open Aornota.Sweepstake2026.Common.Json
@@ -55,7 +56,7 @@ let private updateLastNewsSeen state =
     let state = { state with LastNewsSeen = lastNewsSeen ; UnseenCount = unseenCount }
     state, state |> writePreferencesCmd
 
-let private post (postDto:PostDto) = { Rvn = postDto.Rvn ; UserId = postDto.UserId ; PostTypeDto = postDto.PostTypeDto ; Timestamp = postDto.Timestamp ; Removed = false }
+let private post (postDto:PostDto) = { Rvn = postDto.Rvn ; UserId = postDto.UserId ; Message = postDto.Message ; Timestamp = postDto.Timestamp ; Removed = false }
 
 let private postDic (postDtos:PostDto list) =
     let postDic = PostDic ()
@@ -142,10 +143,67 @@ let private handleRemovePostCmdResult (result:Result<unit, AuthCmdError<string>>
     | _ ->
         state, shouldNeverHappenCmd (sprintf "Unexpected RemovePostCmdResult when RemovePostState is None -> %A" result)
 
+let private handleAddCustomMessageCmdResult (result:Result<unit, AuthCmdError<string>>) (rvn, postDic, readyState) state : State * Cmd<Input> =
+    match readyState.AddCustomMessageState with
+    | Some addCustomMessageState ->
+        match addCustomMessageState.AddCustomMessageStatus with
+        | Some AddCustomMessagePending ->
+            match result with
+            | Ok _ ->
+                let readyState = { readyState with AddCustomMessageState = None }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Custom message has been added" |> successToastCmd
+            | Error error ->
+                let errorText = ifDebug (sprintf "AddCustomMessageCmdResult error -> %A" error) (error |> cmdErrorText)
+                let addCustomMessageState = { addCustomMessageState with AddCustomMessageStatus = errorText |> AddCustomMessageFailed |> Some }
+                let readyState = { readyState with AddCustomMessageState = addCustomMessageState |> Some }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Unable to add custom message" |> errorToastCmd
+        | Some (AddCustomMessageFailed _) | None ->
+            state, shouldNeverHappenCmd (sprintf "Unexpected AddCustomMessageCmdResult when AddCustomMessageStatus is not AddCustomMessagePending -> %A" result)
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected AddCustomMessageCmdResult when AddCustomMessageState is None -> %A" result)
+
+let private handleChangeCustomMessageCmdResult (result:Result<unit, AuthCmdError<string>>) (rvn, postDic, readyState) state : State * Cmd<Input> =
+    match readyState.EditCustomMessageState with
+    | Some editCustomMessageState ->
+        match editCustomMessageState.EditCustomMessageStatus with
+        | Some EditCustomMessagePending ->
+            match result with
+            | Ok _ ->
+                let readyState = { readyState with EditCustomMessageState = None }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Custom message has been edited" |> successToastCmd
+            | Error error ->
+                let errorText = ifDebug (sprintf "ChangeCustomMessageCmdResult error -> %A" error) (error |> cmdErrorText)
+                let editCustomMessageState = { editCustomMessageState with EditCustomMessageStatus = errorText |> EditCustomMessageFailed |> Some }
+                let readyState = { readyState with EditCustomMessageState = editCustomMessageState |> Some }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Unable to edit custom message" |> errorToastCmd
+        | Some (EditCustomMessageFailed _) | None ->
+            state, shouldNeverHappenCmd (sprintf "Unexpected ChangeCustomMessageCmdResult when EditCustomMessageStatus is not EditCustomMessagePending -> %A" result)
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected ChangeCustomMessageCmdResult when EditCustomMessageState is None -> %A" result)
+
+let private handleRemoveCustomMessageCmdResult (result:Result<unit, AuthCmdError<string>>) (rvn, postDic, readyState) state : State * Cmd<Input> =
+    match readyState.RemoveCustomMessageState with
+    | Some removeCustomMessageState ->
+        match removeCustomMessageState.RemoveCustomMessageStatus with
+        | Some RemoveCustomMessagePending ->
+            match result with
+            | Ok _ ->
+                let readyState = { readyState with RemoveCustomMessageState = None }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Custom message has been removed" |> successToastCmd
+            | Error error ->
+                let errorText = ifDebug (sprintf "RemoveCustomMessageCmdResult error -> %A" error) (error |> cmdErrorText)
+                let removeCustomMessageState = { removeCustomMessageState with RemoveCustomMessageStatus = errorText |> RemoveCustomMessageFailed |> Some }
+                let readyState = { readyState with RemoveCustomMessageState = removeCustomMessageState |> Some }
+                { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, "Unable to remove custom message" |> errorToastCmd
+        | Some (RemoveCustomMessageFailed _) | None ->
+            state, shouldNeverHappenCmd (sprintf "Unexpected RemoveCustomMessageCmdResult when RemoveCustomMessageStatus is not RemoveCustomMessagePending -> %A" result)
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected RemoveCustomMessageCmdResult when RemoveCustomMessageState is None -> %A" result)
+
 let private handleServerNewsMsg serverNewsMsg state : State * Cmd<Input> =
     match serverNewsMsg, state.NewsProjection with
     | InitializeNewsProjectionQryResult (Ok (postDtos, hasMorePosts)), Pending ->
-        let readyState = { HasMorePosts = hasMorePosts ; MorePostsPending = false ; AddPostState = None ; EditPostState = None ; RemovePostState = None }
+        let readyState = { HasMorePosts = hasMorePosts ; MorePostsPending = false ; AddPostState = None ; EditPostState = None ; RemovePostState = None ; AddCustomMessageState = None ; EditCustomMessageState = None ; RemoveCustomMessageState = None }
         let state = { state with NewsProjection = (initialRvn, postDtos |> postDic, readyState) |> Ready }
         state |> updateLastNewsSeen
     | InitializeNewsProjectionQryResult (Error (OtherError errorText)), Pending ->
@@ -180,6 +238,12 @@ let private handleServerNewsMsg serverNewsMsg state : State * Cmd<Input> =
         state |> handleChangePostCmdResult result (rvn, postDic, readyState)
     | RemovePostCmdResult result, Ready (rvn, postDic, readyState) ->
         state |> handleRemovePostCmdResult result (rvn, postDic, readyState)
+    | AddCustomMessageCmdResult result, Ready (rvn, postDic, readyState) ->
+        state |> handleAddCustomMessageCmdResult result (rvn, postDic, readyState)
+    | ChangeCustomMessageCmdResult result, Ready (rvn, postDic, readyState) ->
+        state |> handleChangeCustomMessageCmdResult result (rvn, postDic, readyState)
+    | RemoveCustomMessageCmdResult result, Ready (rvn, postDic, readyState) ->
+        state |> handleRemoveCustomMessageCmdResult result (rvn, postDic, readyState)
     | NewsProjectionMsg (PostsDeltaMsg (deltaRvn, postDtoDelta, hasMorePosts)), Ready (rvn, postDic, readyState) ->
         match postDic |> applyPostsDelta rvn deltaRvn postDtoDelta with
         | Ok postDic ->
@@ -197,15 +261,15 @@ let private handleServerNewsMsg serverNewsMsg state : State * Cmd<Input> =
 
 let handleAddPostInput addPostInput (rvn, postDic, readyState) state : State * Cmd<Input> * bool =
     match addPostInput, readyState.AddPostState with
-    | NewMessageTextChanged newMessageText, Some addPostState ->
-        let newMessageErrorText = validatePostMessageText (Markdown newMessageText)
-        let addPostState = { addPostState with NewMessageText = newMessageText ; NewMessageErrorText = newMessageErrorText }
+    | NewMessageChanged newMessage, Some addPostState ->
+        let newMessageErrorText = validatePostMessage (Markdown newMessage)
+        let addPostState = { addPostState with NewMessage = newMessage ; NewMessageErrorText = newMessageErrorText }
         let readyState = { readyState with AddPostState = addPostState |> Some }
         { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
     | AddPost, Some addPostState -> // note: assume no need to validate NewMessageText (i.e. because News.Render.renderAddPostModal will ensure that AddPost can only be dispatched when valid)
         let addPostState = { addPostState with AddPostStatus = AddPostPending |> Some }
         let readyState = { readyState with AddPostState = addPostState |> Some }
-        let cmd = (addPostState.NewPostId, Standard, Markdown (addPostState.NewMessageText.Trim ())) |> CreatePostCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
+        let cmd = (addPostState.NewPostId, Markdown (addPostState.NewMessage.Trim ())) |> CreatePostCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
         { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, true
     | CancelAddPost, Some addPostState ->
         match addPostState.AddPostStatus with
@@ -219,9 +283,9 @@ let handleAddPostInput addPostInput (rvn, postDic, readyState) state : State * C
 
 let handleEditPostInput editPostInput (rvn, postDic, readyState) state : State * Cmd<Input> * bool =
     match editPostInput, readyState.EditPostState with
-    | MessageTextChanged messageText, Some editPostState ->
-        let messageErrorText = validatePostMessageText (Markdown messageText)
-        let editPostState = { editPostState with MessageText = messageText ; MessageErrorText = messageErrorText }
+    | MessageChanged message, Some editPostState ->
+        let messageErrorText = validatePostMessage (Markdown message)
+        let editPostState = { editPostState with Message = message ; MessageErrorText = messageErrorText }
         let readyState = { readyState with EditPostState = editPostState |> Some }
         { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
     | EditPost, Some editPostState -> // note: assume no need to validate MessageText (i.e. because News.Render.renderEditPostModal will ensure that EditPost can only be dispatched when valid)
@@ -230,7 +294,7 @@ let handleEditPostInput editPostInput (rvn, postDic, readyState) state : State *
         let postId = editPostState.PostId
         let post = if postId |> postDic.ContainsKey then postDic.[postId] |> Some else None
         let currentRvn = match post with | Some post -> post.Rvn | None -> initialRvn
-        let cmd = (postId, currentRvn, Markdown (editPostState.MessageText.Trim ())) |> ChangePostCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
+        let cmd = (postId, currentRvn, Markdown (editPostState.Message.Trim ())) |> ChangePostCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
         { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, true
     | CancelEditPost, Some editPostState ->
         match editPostState.EditPostStatus with
@@ -262,7 +326,83 @@ let handleRemovePostInput removePostInput (rvn, postDic:PostDic, readyState) sta
     | _, None ->
         state, shouldNeverHappenCmd (sprintf "Unexpected RemovePostInput when RemovePostState is None -> %A" removePostInput), false
 
-let transition input state =
+let handleAddCustomMessageInput addCustomMessageInput (rvn, postDic, fixturesProjection:Projection<_ * FixtureDic>, readyState) state : State * Cmd<Input> * bool =
+    match fixturesProjection, addCustomMessageInput, readyState.AddCustomMessageState with
+    | Ready _, NewCustomMessageChanged newCustomMessage, Some addCustomMessageState ->
+        let newCustomMessageErrorText = validateCustomMessage (Markdown newCustomMessage)
+        let addCustomMessageState = { addCustomMessageState with NewCustomMessage = newCustomMessage ; NewCustomMessageErrorText = newCustomMessageErrorText }
+        let readyState = { readyState with AddCustomMessageState = addCustomMessageState |> Some }
+        { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
+    | Ready (_, fixtureDic), AddCustomMessage, Some addCustomMessageState -> // note: assume no need to validate NewCustomMessage (i.e. because News.Render.renderAddCustomMessageModal will ensure that AddCustomMessage can only be dispatched when valid)
+        let addCustomMessageState = { addCustomMessageState with AddCustomMessageStatus = AddCustomMessagePending |> Some }
+        let readyState = { readyState with AddCustomMessageState = addCustomMessageState |> Some }
+        let fixtureId = addCustomMessageState.FixtureId
+        let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
+        let currentRvn = match fixture with | Some fixture -> fixture.Rvn | None -> initialRvn
+        let cmd = (fixtureId, currentRvn, Markdown (addCustomMessageState.NewCustomMessage.Trim ())) |> AddCustomMessageCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
+        { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, true
+    | Ready _, CancelAddCustomMessage, Some addCustomMessageState ->
+        match addCustomMessageState.AddCustomMessageStatus with
+        | Some AddCustomMessagePending ->
+            state, shouldNeverHappenCmd "Unexpected CancelAddCustomMessage when AddCustomMessagePending", false
+        | Some (AddCustomMessageFailed _) | None ->
+            let readyState = { readyState with AddCustomMessageState = None }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, false
+    | Ready _, _, None ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected AddCustomMessageInput when AddCustomMessageState is None -> %A" addCustomMessageInput), false
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected AddCustomMessageInput when fixturesProjects is not Ready -> %A" addCustomMessageInput), false
+
+let handleEditCustomMessageInput editCustomMessageInput (rvn, postDic, fixturesProjection:Projection<_ * FixtureDic>, readyState) state : State * Cmd<Input> * bool =
+    match fixturesProjection, editCustomMessageInput, readyState.EditCustomMessageState with
+    | Ready _, CustomMessageChanged customMessage, Some editCustomMessageState ->
+        let customMessageErrorText = validateCustomMessage (Markdown customMessage)
+        let editCustomMessageState = { editCustomMessageState with CustomMessage = customMessage ; CustomMessageErrorText = customMessageErrorText }
+        let readyState = { readyState with EditCustomMessageState = editCustomMessageState |> Some }
+        { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
+    | Ready (_, fixtureDic), EditCustomMessage, Some editCustomMessageState -> // note: assume no need to validate CustomMessage (i.e. because News.Render.renderEditCustomMessageModal will ensure that EditCustomMessage can only be dispatched when valid)
+        let editCustomMessageState = { editCustomMessageState with EditCustomMessageStatus = EditCustomMessagePending |> Some }
+        let readyState = { readyState with EditCustomMessageState = editCustomMessageState |> Some }
+        let fixtureId = editCustomMessageState.FixtureId
+        let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
+        let currentRvn = match fixture with | Some fixture -> fixture.Rvn | None -> initialRvn
+        let cmd = (fixtureId, currentRvn, Markdown (editCustomMessageState.CustomMessage.Trim ())) |> ChangeCustomMessageCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
+        { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, true
+    | Ready _, CancelEditCustomMessage, Some editCustomMessageState ->
+        match editCustomMessageState.EditCustomMessageStatus with
+        | Some EditCustomMessagePending ->
+            state, shouldNeverHappenCmd "Unexpected CancelEditCustomMessage when EditCustomMessagePending", false
+        | Some (EditCustomMessageFailed _) | None ->
+            let readyState = { readyState with EditCustomMessageState = None }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, false
+    | Ready _, _, None ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected EditCustomMessageInput when EditCustomMessageState is None -> %A" editCustomMessageInput), false
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected EditCustomMessageInput when fixturesProjects is not Ready -> %A" editCustomMessageInput), false
+
+let handleRemoveCustomMessageInput removeCustomMessageInput (rvn, postDic:PostDic, fixturesProjection:Projection<_ * FixtureDic>, readyState) state : State * Cmd<Input> * bool =
+    match fixturesProjection, removeCustomMessageInput, readyState.RemoveCustomMessageState with
+    | Ready (_, fixtureDic), ConfirmRemoveCustomMessage, Some removeCustomMessageState ->
+        let removeCustomMessageState = { removeCustomMessageState with RemoveCustomMessageStatus = RemoveCustomMessagePending |> Some }
+        let readyState = { readyState with RemoveCustomMessageState = removeCustomMessageState |> Some }
+        let fixtureId = removeCustomMessageState.FixtureId
+        let fixture = if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
+        let currentRvn = match fixture with | Some fixture -> fixture.Rvn | None -> initialRvn
+        let cmd = (fixtureId, currentRvn) |> RemoveCustomMessageCmd |> UiAuthNewsMsg |> SendUiAuthMsg |> Cmd.ofMsg
+        { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, true
+    | Ready _, CancelRemoveCustomMessage, Some removeCustomMessageState ->
+        match removeCustomMessageState.RemoveCustomMessageStatus with
+        | Some RemoveCustomMessagePending ->
+            state, shouldNeverHappenCmd "Unexpected CancelRemoveCustomMessage when RemoveCustomMessagePending", false
+        | Some (RemoveCustomMessageFailed _) | None ->
+            let readyState = { readyState with RemoveCustomMessageState = None }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, false
+    | Ready _, _, None ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected RemoveCustomMessageInput when RemoveCustomMessageState is None -> %A" removeCustomMessageInput), false
+    | _ ->
+        state, shouldNeverHappenCmd (sprintf "Unexpected RemoveCustomMessageInput when fixturesProjects is not Ready -> %A" removeCustomMessageInput), false
+
+let transition (fixturesProjection:Projection<_ * FixtureDic>) input state =
     let state, cmd, isUserNonApiActivity =
         match input, state.NewsProjection with
         | AddNotificationMessage _, _ -> // note: expected to be handled by Program.State.transition
@@ -296,21 +436,20 @@ let transition input state =
             let cmd = MorePostsQry |> UiUnauthNewsMsg |> SendUiUnauthMsg |> Cmd.ofMsg
             { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, cmd, false
         | ShowAddPostModal, Ready (rvn, postDic, readyState) ->
-            let addPostState = { NewPostId = PostId.Create () ; NewMessageText = String.Empty ; NewMessageErrorText = None ; AddPostStatus = None }
+            let addPostState = { NewPostId = PostId.Create () ; NewMessage = String.Empty ; NewMessageErrorText = None ; AddPostStatus = None }
             let readyState = { readyState with AddPostState = addPostState |> Some }
             { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
         | AddPostInput addPostInput, Ready (rvn, postDic, readyState) ->
             state |> handleAddPostInput addPostInput (rvn, postDic, readyState)
         | ShowEditPostModal postId, Ready (rvn, postDic, readyState) ->
             let post = if postId |> postDic.ContainsKey then postDic.[postId] |> Some else None
-            let messageText =
+            let message =
                 match post with
                 | Some post ->
-                    match post.PostTypeDto with
-                    | StandardDto (Markdown messageText) -> messageText
-                    | MatchResultDto (Markdown messageText, _) -> messageText
+                    let (Markdown message) = post.Message
+                    message
                 | None -> String.Empty // note: should never happen
-            let editPostState = { PostId = postId ; MessageText = messageText ; MessageErrorText = None ; EditPostStatus = None }
+            let editPostState = { PostId = postId ; Message = message ; MessageErrorText = None ; EditPostStatus = None }
             let readyState = { readyState with EditPostState = editPostState |> Some }
             { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
         | EditPostInput editPostInput, Ready (rvn, postDic, readyState) ->
@@ -321,6 +460,35 @@ let transition input state =
             { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
         | RemovePostInput removePostInput, Ready (rvn, postDic, readyState) ->
             state |> handleRemovePostInput removePostInput (rvn, postDic, readyState)
+        | ShowAddCustomMessageModal fixtureId, Ready (rvn, postDic, readyState) ->
+            let addCustomMessageState = { FixtureId = fixtureId ; NewCustomMessage = String.Empty ; NewCustomMessageErrorText = None ; AddCustomMessageStatus = None }
+            let readyState = { readyState with AddCustomMessageState = addCustomMessageState |> Some }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
+        | AddCustomMessageInput addCustomMessageInput, Ready (rvn, postDic, readyState) ->
+            state |> handleAddCustomMessageInput addCustomMessageInput (rvn, postDic, fixturesProjection, readyState)
+        | ShowEditCustomMessageModal fixtureId, Ready (rvn, postDic, readyState) ->
+            let fixture =
+                match fixturesProjection with
+                | Ready (_, fixtureDic) -> if fixtureId |> fixtureDic.ContainsKey then fixtureDic.[fixtureId] |> Some else None
+                | _ -> None // note: should never happen
+            let customMessage =
+                match fixture with
+                | Some fixture ->
+                    match fixture.CustomMessage with
+                    | Some (_, Markdown customMessage) -> customMessage
+                    | None -> String.Empty // note: should never happen
+                | None -> String.Empty // note: should never happen
+            let editCustomMessageState = { FixtureId = fixtureId ; CustomMessage = customMessage ; CustomMessageErrorText = None ; EditCustomMessageStatus = None }
+            let readyState = { readyState with EditCustomMessageState = editCustomMessageState |> Some }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
+        | EditCustomMessageInput editCustomMessageInput, Ready (rvn, postDic, readyState) ->
+            state |> handleEditCustomMessageInput editCustomMessageInput (rvn, postDic, fixturesProjection, readyState)
+        | ShowRemoveCustomMessageModal fixtureId, Ready (rvn, postDic, readyState) -> // note: no need to check for unknown postId (should never happen)
+            let removeCustomMessageState = { FixtureId = fixtureId ; RemoveCustomMessageStatus = None }
+            let readyState = { readyState with RemoveCustomMessageState = removeCustomMessageState |> Some }
+            { state with NewsProjection = (rvn, postDic, readyState) |> Ready }, Cmd.none, true
+        | RemoveCustomMessageInput removeCustomMessageInput, Ready (rvn, postDic, readyState) ->
+            state |> handleRemoveCustomMessageInput removeCustomMessageInput (rvn, postDic, fixturesProjection, readyState)
         | _, _ ->
             state, shouldNeverHappenCmd (sprintf "Unexpected Input when %A -> %A" state.NewsProjection input), false
     state, cmd, isUserNonApiActivity

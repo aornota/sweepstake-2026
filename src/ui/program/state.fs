@@ -1034,7 +1034,7 @@ let private handleUnauthInput unauthInput (unauthState:UnauthState) state =
         state |> shouldNeverHappen "Unexpected NewsInput SendUiAuthMsg when Unauth"
     | UnauthPageInput (NewsInput newsInput), _ ->
         let newsState = unauthState.UnauthPageStates.NewsState
-        let newsState, newsCmd, _ = newsState |> News.State.transition newsInput
+        let newsState, newsCmd, _ = newsState |> News.State.transition unauthState.UnauthProjections.FixturesProjection newsInput
         let unauthPageStates = { unauthState.UnauthPageStates with NewsState = newsState }
         let newsCmd = newsCmd |> Cmd.map (NewsInput >> UnauthPageInput >> UnauthInput >> AppInput)
         { state with AppState = Unauth { unauthState with UnauthPageStates = unauthPageStates } }, newsCmd
@@ -1145,7 +1145,7 @@ let private handleAuthInput authInput authState state =
         { state with AppState = Auth authState }, cmd, false
     | PageInput (UPageInput (NewsInput newsInput)), _, _ ->
         let newsState = authState.UnauthPageStates.NewsState
-        let newsState, newsCmd, isUserNonApiActivity = newsState |> News.State.transition newsInput
+        let newsState, newsCmd, isUserNonApiActivity = newsState |> News.State.transition authState.UnauthProjections.FixturesProjection newsInput
         let unauthPageStates = { authState.UnauthPageStates with NewsState = newsState }
         let newsCmd = newsCmd |> Cmd.map (NewsInput >> UPageInput >> PageInput >> AuthInput >> AppInput)
         { state with AppState = Auth { authState with UnauthPageStates = unauthPageStates } }, newsCmd, isUserNonApiActivity

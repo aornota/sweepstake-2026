@@ -22,7 +22,7 @@ open System
 
 type UserRead = { UserId : UserId ; Rvn : Rvn ; UserName : UserName ; UserType : UserType }
 
-type NewsRead = { PostId : PostId ; Rvn : Rvn ; UserId : UserId ; PostType : PostType ; MessageText : Markdown ; Timestamp : DateTimeOffset ; Removed : bool }
+type NewsRead = { PostId : PostId ; Rvn : Rvn ; UserId : UserId ; Message : Markdown ; Timestamp : DateTimeOffset ; Removed : bool }
 
 type PlayerRead = { PlayerId : PlayerId ; PlayerName : PlayerName ; PlayerType : PlayerType ; PlayerStatus : PlayerStatus }
 type SquadRead = { SquadId : SquadId ; Rvn : Rvn ; SquadName : SquadName ; Group : Group ; Seeding : Seeding option ; CoachName : CoachName ; Eliminated : bool ; PlayersRead : PlayerRead list }

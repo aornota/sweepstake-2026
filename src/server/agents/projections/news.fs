@@ -26,8 +26,8 @@ open System.Collections.Generic
 type private NewsInput =
     | Start of reply : AsyncReplyChannel<unit>
     | OnNewsRead of newsRead : NewsRead list
-    | OnPostCreated of postId : PostId * rvn : Rvn * userId : UserId * postType : PostType * messageText : Markdown * timestamp : DateTimeOffset
-    | OnPostChanged of postId : PostId * rvn : Rvn * messageText : Markdown
+    | OnPostCreated of postId : PostId * rvn : Rvn * userId : UserId * message : Markdown * timestamp : DateTimeOffset
+    | OnPostChanged of postId : PostId * rvn : Rvn * message : Markdown
     | OnPostRemoved of postId : PostId
     | RemoveConnections of connectionIds : ConnectionId list
     | HandleInitializeNewsProjectionQry of connectionId : ConnectionId
@@ -35,7 +35,7 @@ type private NewsInput =
     | HandleMorePostsQry of connectionId : ConnectionId
         * reply : AsyncReplyChannel<Result<Rvn * PostDto list * bool, OtherError<string>>>
 
-type private Post = { Ordinal : int ; Rvn : Rvn ; UserId : UserId ; PostTypeDto : PostTypeDto ; Timestamp : DateTimeOffset }
+type private Post = { Ordinal : int ; Rvn : Rvn ; UserId : UserId ; Message : Markdown ; Timestamp : DateTimeOffset }
 type private PostDic = Dictionary<PostId, Post>
 
 type private Projectee = { LastRvn : Rvn ; MinPostOrdinal : int option ; LastHasMorePosts : bool }
@@ -58,7 +58,7 @@ let private logResult source successText result =
         sprintf "%s Ok%s" source successText |> Info |> log
     | Error error -> sprintf "%s Error -> %A" source error |> Danger |> log
 
-let private postDto (postId, post:Post) = { PostId = postId ; Rvn = post.Rvn ; UserId = post.UserId ; PostTypeDto = post.PostTypeDto ; Timestamp = post.Timestamp }
+let private postDto (postId, post:Post) = { PostId = postId ; Rvn = post.Rvn ; UserId = post.UserId ; Message = post.Message ; Timestamp = post.Timestamp }
 
 let private postDtos state = state.PostDic |> List.ofSeq |> List.map (fun (KeyValue (postId, post)) -> (postId, post) |> postDto)
 
@@ -153,11 +153,7 @@ type News () =
                 |> List.filter (fun newsRead -> newsRead.Removed |> not)
                 |> List.sortBy (fun newsRead -> newsRead.Timestamp)
                 |> List.iteri (fun i newsRead ->
-                    let postTypeDto =
-                        match newsRead.PostType with
-                        | Standard -> newsRead.MessageText |> StandardDto
-                        | MatchResult fixtureId -> (newsRead.MessageText, fixtureId) |> MatchResultDto
-                    let post = { Ordinal = i ; Rvn = newsRead.Rvn ; UserId = newsRead.UserId ; PostTypeDto = postTypeDto ; Timestamp = newsRead.Timestamp }
+                    let post = { Ordinal = i ; Rvn = newsRead.Rvn ; UserId = newsRead.UserId ; Message = newsRead.Message ; Timestamp = newsRead.Timestamp }
                     (newsRead.PostId, post) |> postDic.Add)
                 let projecteeDic = ProjecteeDic ()
                 let state = postDic |> Initialization |> updateState source projecteeDic
@@ -173,7 +169,7 @@ type News () =
             match input with
             | Start _ -> "Start when projectingNews" |> IgnoredInput |> Agent |> log ; return! projectingNews state postDic projecteeDic
             | OnNewsRead _ -> "OnNewsRead when projectingNews" |> IgnoredInput |> Agent |> log ; return! projectingNews state postDic projecteeDic
-            | OnPostCreated (postId, rvn, userId, postType, messageText, timestamp) ->
+            | OnPostCreated (postId, rvn, userId, message, timestamp) ->
                 let source = "OnPostCreated"
                 sprintf "%s (%A %A) when projectingNews (%i post/s) (%i projectee/s)" source postId userId postDic.Count projecteeDic.Count |> Info |> log
                 let state =
@@ -181,26 +177,18 @@ type News () =
                         let nextOrdinal =
                             if postDic.Count = 0 then 1
                             else (postDic |> List.ofSeq |> List.map (fun (KeyValue (_, post)) -> post.Ordinal) |> List.max) + 1
-                        let postTypeDto =
-                            match postType with
-                            | Standard -> messageText |> StandardDto
-                            | MatchResult fixtureId -> (messageText, fixtureId) |> MatchResultDto
-                        let post = { Ordinal = nextOrdinal ; Rvn = rvn ; UserId = userId ; PostTypeDto = postTypeDto ; Timestamp = timestamp }
+                        let post = { Ordinal = nextOrdinal ; Rvn = rvn ; UserId = userId ; Message = message ; Timestamp = timestamp }
                         (postId, post) |> postDic.Add
                         (postDic, state) |> PostChange |> updateState source projecteeDic
                     else state
                 return! projectingNews state postDic projecteeDic
-            | OnPostChanged (postId, rvn, messageText) ->
+            | OnPostChanged (postId, rvn, message) ->
                 let source = "OnPostChanged"
                 sprintf "%s (%A %A) when projectingNews (%i post/s) (%i projectee/s)" source postId rvn postDic.Count projecteeDic.Count |> Info |> log
                 let state =
                     if postId |> postDic.ContainsKey then // note: silently ignore unknown postId (should never happen)
                         let post = postDic.[postId]
-                        let postTypeDto =
-                            match post.PostTypeDto with
-                            | StandardDto _ -> messageText |> StandardDto
-                            | MatchResultDto (_, fixtureId) -> (messageText, fixtureId) |> MatchResultDto
-                        postDic.[postId] <- { post with Rvn = rvn ; PostTypeDto = postTypeDto }
+                        postDic.[postId] <- { post with Rvn = rvn ; Message = message }
                         (postDic, state) |> PostChange |> updateState source projecteeDic
                     else state
                 return! projectingNews state postDic projecteeDic
@@ -284,8 +272,8 @@ type News () =
             | NewsRead newsRead -> newsRead |> OnNewsRead |> agent.Post
             | NewsEventWritten (rvn, newsEvent) ->
                 match newsEvent with
-                | PostCreated (postId, userId, postType, messageText, timestamp) -> (postId, rvn, userId, postType, messageText, timestamp) |> OnPostCreated |> agent.Post
-                | PostChanged (postId, messageText) -> (postId, rvn, messageText) |> OnPostChanged |> agent.Post
+                | PostCreated (postId, userId, message, timestamp) -> (postId, rvn, userId, message, timestamp) |> OnPostCreated |> agent.Post
+                | PostChanged (postId, message) -> (postId, rvn, message) |> OnPostChanged |> agent.Post
                 | PostRemoved postId -> postId |> OnPostRemoved |> agent.Post
             | Disconnected connectionId -> [ connectionId ] |> RemoveConnections |> agent.Post
             | _ -> ())

@@ -38,6 +38,12 @@ type private FixturesInput =
     | HandleAddMatchEventCmd of token : ResultsAdminToken * auditUserId : UserId * fixtureId : FixtureId * currentRvn : Rvn * matchEvent : MatchEvent * connectionId : ConnectionId
     | HandleRemoveMatchEventCmd of token : ResultsAdminToken * auditUserId : UserId * fixtureId : FixtureId * currentRvn : Rvn * matchEventId : MatchEventId * matchEvent : MatchEvent
         * connectionId : ConnectionId
+    | HandleAddCustomMessageCmd of token : CreatePostToken * auditUserId : UserId * fixtureId : FixtureId * currentRvn : Rvn  * customMessage : Markdown
+        * reply : AsyncReplyChannel<Result<unit, AuthCmdError<string>>>
+    | HandleChangeCustomMessageCmd of token : EditOrRemovePostToken * auditUserId : UserId * fixtureId : FixtureId * currentRvn : Rvn * customMessage : Markdown
+        * reply : AsyncReplyChannel<Result<unit, AuthCmdError<string>>>
+    | HandleRemoveCustomMessageCmd of token : EditOrRemovePostToken * auditUserId : UserId * fixtureId : FixtureId * currentRvn : Rvn
+        * reply : AsyncReplyChannel<Result<unit, AuthCmdError<string>>>
 
 type private MatchEventDic = Dictionary<MatchEventId, MatchEvent>
 
@@ -87,6 +93,12 @@ let private applyFixtureEvent source idAndFixtureResult (nextRvn, fixtureEvent:F
             matchEventId |> matchEventDic.Remove |> ignore
             (fixtureId, { fixture with Rvn = nextRvn } |> Some) |> Ok
         else ifDebug (sprintf "%A does not exist for %A" matchEventId fixtureId) UNEXPECTED_ERROR |> otherError
+    | Ok (fixtureId, Some fixture), CustomMessageAdded (_, userId, customMessage) ->
+        (fixtureId, { fixture with Rvn = nextRvn ; CustomMessage = Some (userId, customMessage) } |> Some) |> Ok
+    | Ok (fixtureId, Some fixture), CustomMessageChanged (_, userId, customMessage) ->
+        (fixtureId, { fixture with Rvn = nextRvn ; CustomMessage = Some (userId, customMessage) } |> Some) |> Ok
+    | Ok (fixtureId, Some fixture), CustomMessageRemoved _ ->
+        (fixtureId, { fixture with Rvn = nextRvn ; CustomMessage = None } |> Some) |> Ok
     | Error error, _ -> error |> Error
 
 let private initializeFixtures source (fixturesEvents:(FixtureId * (Rvn * FixtureEvent) list) list) =
@@ -153,7 +165,10 @@ type Fixtures () =
             | HandleConfirmParticipantCmd _ -> "HandleConfirmParticipantCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | HandleAddMatchEventSpecialCmd _ -> "HandleAddMatchEventSpecialCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | HandleAddMatchEventCmd _ -> "HandleAddMatchEventCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
-            | HandleRemoveMatchEventCmd _ -> "HandleRemoveMatchEventCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart () }
+            | HandleRemoveMatchEventCmd _ -> "HandleRemoveMatchEventCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
+            | HandleAddCustomMessageCmd _ -> "HandleAddCustomMessageCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
+            | HandleChangeCustomMessageCmd _ -> "HandleChangeCustomMessageCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
+            | HandleRemoveCustomMessageCmd _ -> "HandleRemoveCustomMessageCmd when awaitingStart" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead () }
         and pendingOnFixturesEventsRead () = async {
             let! input = inbox.Receive ()
             match input with
@@ -179,7 +194,10 @@ type Fixtures () =
             | HandleConfirmParticipantCmd _ -> "HandleConfirmParticipantCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
             | HandleAddMatchEventSpecialCmd _ -> "HandleAddMatchEventSpecialCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
             | HandleAddMatchEventCmd _ -> "HandleAddMatchEventCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
-            | HandleRemoveMatchEventCmd _ -> "HandleRemoveMatchEventCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead () }
+            | HandleRemoveMatchEventCmd _ -> "HandleRemoveMatchEventCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
+            | HandleAddCustomMessageCmd _ -> "HandleAddCustomMessageCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
+            | HandleChangeCustomMessageCmd _ -> "HandleChangeCustomMessageCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead ()
+            | HandleRemoveCustomMessageCmd _ -> "HandleRemoveCustomMessageCmd when pendingOnFixturesEventsRead" |> IgnoredInput |> Agent |> log ; return! pendingOnFixturesEventsRead () }
         and managingFixtures fixtureDic = async {
             let! input = inbox.Receive ()
             match input with
@@ -266,6 +284,58 @@ type Fixtures () =
                 let serverMsg = result |> Result.bind (fun (_, _, matchEvent) -> matchEvent |> Ok) |> RemoveMatchEventCmdResult |> ServerFixturesMsg
                 (serverMsg, [ connectionId ]) |> SendMsg |> broadcaster.Broadcast
                 match result with | Ok (fixtureId, fixture, _) -> fixtureDic |> updateFixture fixtureId fixture | Error _ -> ()
+                return! managingFixtures fixtureDic
+            | HandleAddCustomMessageCmd (_, auditUserId, fixtureId, currentRvn, Markdown customMessage, reply) ->
+                let source = "HandleAddCustomMessageCmd"
+                sprintf "%s for %A (%A) when managingFixtures (%i fixture/s)" source fixtureId currentRvn fixtureDic.Count |> Verbose |> log
+                let customMessage = Markdown (customMessage.Trim ())
+                let result =
+                    fixtureDic |> tryFindFixture fixtureId (otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) ->
+                        match fixture.CustomMessage with
+                        | Some _ -> ifDebug "Fixture already has a custom message" UNEXPECTED_ERROR |> otherCmdError source
+                        | None -> (fixtureId, fixture) |> Ok)
+                    |> Result.bind (fun (fixtureId, fixture) -> match customMessage |> validateCustomMessage with | None -> (fixtureId, fixture) |> Ok | Some errorText -> errorText |> otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) -> (fixtureId, auditUserId, customMessage) |> CustomMessageAdded |> tryApplyFixtureEvent source fixtureId (Some fixture) (incrementRvn currentRvn) ())
+                let! result = match result with | Ok (fixture, rvn, fixtureEvent, _) -> tryWriteFixtureEventAsync auditUserId rvn fixtureEvent fixture () | Error error -> error |> Error |> thingAsync
+                result |> logResult source (fun (fixtureId, fixture, _) -> Some (sprintf "Audit%A %A %A" auditUserId fixtureId fixture)) // note: log success/failure here (rather than assuming that calling code will do so)
+                result |> discardOk |> reply.Reply
+                match result with | Ok (fixtureId, fixture, _) -> fixtureDic |> updateFixture fixtureId fixture | Error _ -> ()
+                return! managingFixtures fixtureDic
+            | HandleChangeCustomMessageCmd (editOrRemovePostToken, auditUserId, fixtureId, currentRvn, Markdown customMessage, reply) ->
+                let source = "HandleChangeCustomMessageCmd"
+                sprintf "%s for %A (%A) when managingFixtures (%i fixture/s)" source fixtureId currentRvn fixtureDic.Count |> Verbose |> log
+                let customMessage = Markdown (customMessage.Trim ())
+                let result =
+                    fixtureDic |> tryFindFixture fixtureId (otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) ->
+                        match fixture.CustomMessage with
+                        | Some (userId, _) when editOrRemovePostToken.UserId <> userId -> NotAuthorized |> AuthCmdAuthznError |> Error
+                        | Some _ -> (fixtureId, fixture) |> Ok
+                        | None -> ifDebug "Fixture does not have a custom message to change" UNEXPECTED_ERROR |> otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) -> match customMessage |> validateCustomMessage with | None -> (fixtureId, fixture) |> Ok | Some errorText -> errorText |> otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) -> (fixtureId, auditUserId, customMessage) |> CustomMessageChanged |> tryApplyFixtureEvent source fixtureId (Some fixture) (incrementRvn currentRvn) ())
+                let! result = match result with | Ok (fixture, rvn, fixtureEvent, _) -> tryWriteFixtureEventAsync auditUserId rvn fixtureEvent fixture () | Error error -> error |> Error |> thingAsync
+                result |> logResult source (fun (fixtureId, fixture, _) -> Some (sprintf "Audit%A %A %A" auditUserId fixtureId fixture)) // note: log success/failure here (rather than assuming that calling code will do so)
+                result |> discardOk |> reply.Reply
+                match result with | Ok (fixtureId, fixture, _) -> fixtureDic |> updateFixture fixtureId fixture | Error _ -> ()
+                return! managingFixtures fixtureDic
+            | HandleRemoveCustomMessageCmd (editOrRemovePostToken, auditUserId, fixtureId, currentRvn, reply) ->
+                let source = "HandleRemoveCustomMessageCmd"
+                sprintf "%s for %A (%A) when managingFixtures (%i fixture/s)" source fixtureId currentRvn fixtureDic.Count |> Verbose |> log
+                let result =
+                    fixtureDic |> tryFindFixture fixtureId (otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) ->
+                        match fixture.CustomMessage with
+                        | Some (userId, _) when editOrRemovePostToken.UserId <> userId -> NotAuthorized |> AuthCmdAuthznError |> Error
+                        | Some _ -> (fixtureId, fixture) |> Ok
+                        | None -> ifDebug "Fixture does not have a custom message to remove" UNEXPECTED_ERROR |> otherCmdError source)
+                    |> Result.bind (fun (fixtureId, fixture) -> fixtureId |> CustomMessageRemoved |> tryApplyFixtureEvent source fixtureId (Some fixture) (incrementRvn currentRvn) ())
+                let! result = match result with | Ok (fixture, rvn, fixtureEvent, _) -> tryWriteFixtureEventAsync auditUserId rvn fixtureEvent fixture () | Error error -> error |> Error |> thingAsync
+                result |> logResult source (fun (fixtureId, fixture, _) -> Some (sprintf "Audit%A %A %A" auditUserId fixtureId fixture)) // note: log success/failure here (rather than assuming that calling code will do so)
+                result |> discardOk |> reply.Reply
+                result |> discardOk |> reply.Reply
+                match result with | Ok (fixtureId, fixture, _) -> fixtureDic |> updateFixture fixtureId fixture | Error _ -> ()
                 return! managingFixtures fixtureDic }
         "agent instantiated -> awaitingStart" |> Info |> log
         awaitingStart ())
@@ -291,5 +361,11 @@ type Fixtures () =
         (token, auditUserId, fixtureId, currentRvn, matchEvent, connectionId) |> HandleAddMatchEventCmd |> agent.Post
     member __.HandleRemoveMatchEventCmd (token, auditUserId, fixtureId, currentRvn, matchEventId, matchEvent, connectionId) =
         (token, auditUserId, fixtureId, currentRvn, matchEventId, matchEvent, connectionId) |> HandleRemoveMatchEventCmd |> agent.Post
+    member __.HandleAddCustomMessageCmd (token, auditUserId, fixtureId, currentRvn, customMessage) =
+        (fun reply -> (token, auditUserId, fixtureId, currentRvn, customMessage, reply) |> HandleAddCustomMessageCmd) |> agent.PostAndAsyncReply
+    member __.HandleChangeCustomMessageCmd (token, auditUserId, fixtureId, currentRvn, customMessage) =
+        (fun reply -> (token, auditUserId, fixtureId, currentRvn, customMessage, reply) |> HandleChangeCustomMessageCmd) |> agent.PostAndAsyncReply
+    member __.HandleRemoveCustomMessageCmd (token, auditUserId, fixtureId, currentRvn) =
+        (fun reply -> (token, auditUserId, fixtureId, currentRvn, reply) |> HandleRemoveCustomMessageCmd) |> agent.PostAndAsyncReply
 
 let fixtures = Fixtures ()

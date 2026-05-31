@@ -2,7 +2,7 @@ module Aornota.Sweepstake2026.Server.Agents.Projections.Fixtures
 
 (* Broadcasts: SendMsg
    Subscribes: FixturesRead
-               FixtureEventWritten (ParticipantConfirmed | MatchEventAdded | MatchEventRemoved)
+               FixtureEventWritten (ParticipantConfirmed | MatchEventAdded | MatchEventRemoved | CustomMessageAdded | CustomMessageChanged | CustomMessageRemoved)
                SquadsRead
                SquadEventWritten (PlayerAdded | PlayerTypeChanged)
                Disconnected *)
@@ -31,6 +31,9 @@ type private FixtureInput =
     | OnParticipantConfirmed of fixtureId : FixtureId * rvn : Rvn * role : Role * squadId : SquadId
     | OnMatchEventAdded of fixtureId : FixtureId * rvn : Rvn * matchEventId : MatchEventId * matchEvent : MatchEvent
     | OnMatchEventRemoved of fixtureId : FixtureId * rvn : Rvn * matchEventId : MatchEventId
+    | OnCustomMessageAdded of fixtureId : FixtureId * rvn : Rvn * userId : UserId * customMessage : Markdown
+    | OnCustomMessageChanged of fixtureId : FixtureId * rvn : Rvn * userId : UserId * customMessage : Markdown
+    | OnCustomMessageRemoved of fixtureId : FixtureId * rvn : Rvn
     | OnSquadsRead of squadsRead : SquadRead list
     | OnPlayerAdded of playerId : PlayerId * playerType : PlayerType
     | OnPlayerTypeChanged of playerId : PlayerId * playerType : PlayerType
@@ -300,6 +303,9 @@ type Fixtures () =
             | OnParticipantConfirmed _ -> "OnParticipantConfirmed when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | OnMatchEventAdded _ -> "OnMatchEventAdded when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | OnMatchEventRemoved _ -> "OnMatchEventRemoved when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
+            | OnCustomMessageAdded _ -> "OnCustomMessageAdded when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
+            | OnCustomMessageChanged _ -> "OnCustomMessageChanged when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
+            | OnCustomMessageRemoved _ -> "OnCustomMessageRemoved when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | OnSquadsRead _ -> "OnSquadsRead when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | OnPlayerAdded _ -> "OnPlayerAdded when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
             | OnPlayerTypeChanged _ -> "OnPlayerTypeChanged when awaitingStart" |> IgnoredInput |> Agent |> log ; return! awaitingStart ()
@@ -320,6 +326,9 @@ type Fixtures () =
             | OnParticipantConfirmed _ -> "OnParticipantConfirmed when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
             | OnMatchEventAdded _ -> "OnMatchEventAdded when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
             | OnMatchEventRemoved _ -> "OnMatchEventRemoved when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
+            | OnCustomMessageAdded _ -> "OnCustomMessageAdded when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
+            | OnCustomMessageChanged _ -> "OnCustomMessageChanged when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
+            | OnCustomMessageRemoved _ -> "OnCustomMessageRemoved when pendingAllRead" |> IgnoredInput |> Agent |> log ; return! pendingAllRead fixturesRead squadsRead
             | OnSquadsRead squadsRead ->
                 let source = "OnSquadsRead"
                 sprintf "%s (%i squad/s) when pendingAllRead" source squadsRead.Length |> Info |> log
@@ -380,6 +389,46 @@ type Fixtures () =
                         else state
                     else state
                 return! projectingFixtures state fixtureDic projecteeDic
+            | OnCustomMessageAdded (fixtureId, rvn, userId, customMesage) ->
+                let source = "OnCustomMessageAdded"
+                sprintf "%s (%A %A) when projectingFixtures (%i fixture/s) (%i projectee/s)" source fixtureId rvn fixtureDic.Count projecteeDic.Count |> Info |> log
+                let state =
+                    if fixtureId |> fixtureDic.ContainsKey then // note: silently ignore unknown fixtureId (should never happen)
+                        let fixture = fixtureDic.[fixtureId]
+                        match fixture.CustomMessage with
+                        | Some _ -> state // note: silently ignore if custom message already exists (should never happen)
+                        | None ->
+                            fixtureDic.[fixtureId] <- { fixture with Rvn = rvn ; CustomMessage = Some (userId, customMesage) }
+                            (fixtureDic, state) |> FixtureChange |> updateState source projecteeDic
+                    else state
+                return! projectingFixtures state fixtureDic projecteeDic
+            | OnCustomMessageChanged (fixtureId, rvn, userId, customMesage) ->
+                let source = "OnCustomMessageChanged"
+                sprintf "%s (%A %A) when projectingFixtures (%i fixture/s) (%i projectee/s)" source fixtureId rvn fixtureDic.Count projecteeDic.Count |> Info |> log
+                let state =
+                    if fixtureId |> fixtureDic.ContainsKey then // note: silently ignore unknown fixtureId (should never happen)
+                        let fixture = fixtureDic.[fixtureId]
+                        match fixture.CustomMessage with
+                        | Some (otherUserId, _) when otherUserId <> userId -> state // silently ignore if custom message already exists and is associated with another user (should never happen)
+                        | Some _ ->
+                            fixtureDic.[fixtureId] <- { fixture with Rvn = rvn ; CustomMessage = Some (userId, customMesage) }
+                            (fixtureDic, state) |> FixtureChange |> updateState source projecteeDic
+                        | None -> state // note: silently ignore if custom message does not already exist (should never happen)
+                    else state
+                return! projectingFixtures state fixtureDic projecteeDic
+            | OnCustomMessageRemoved (fixtureId, rvn) ->
+                let source = "OnCustomMessageRemoved"
+                sprintf "%s (%A %A) when projectingFixtures (%i fixture/s) (%i projectee/s)" source fixtureId rvn fixtureDic.Count projecteeDic.Count |> Info |> log
+                let state =
+                    if fixtureId |> fixtureDic.ContainsKey then // note: silently ignore unknown fixtureId (should never happen)
+                        let fixture = fixtureDic.[fixtureId]
+                        match fixture.CustomMessage with
+                        | Some _ ->
+                            fixtureDic.[fixtureId] <- { fixture with Rvn = rvn ; CustomMessage = None }
+                            (fixtureDic, state) |> FixtureChange |> updateState source projecteeDic
+                        | None -> state // note: silently ignore if custom message does not already exist (should never happen)
+                    else state
+                return! projectingFixtures state fixtureDic projecteeDic
             | OnSquadsRead _ -> "OnSquadsRead when projectingFixtures" |> IgnoredInput |> Agent |> log ; return! projectingFixtures state fixtureDic projecteeDic
             | OnPlayerAdded (playerId, playerType) ->
                 let source = "OnPlayerAdded"
@@ -431,6 +480,9 @@ type Fixtures () =
                 | ParticipantConfirmed (fixtureId, role, squadId) -> (fixtureId, rvn, role, squadId) |> OnParticipantConfirmed |> agent.Post
                 | MatchEventAdded (fixtureId, matchEventId, matchEvent) -> (fixtureId, rvn, matchEventId, matchEvent) |> OnMatchEventAdded |> agent.Post
                 | MatchEventRemoved (fixtureId, matchEventId) -> (fixtureId, rvn, matchEventId) |> OnMatchEventRemoved |> agent.Post
+                | CustomMessageAdded (fixtureId, userId, customMessage) -> (fixtureId, rvn, userId, customMessage) |> OnCustomMessageAdded |> agent.Post
+                | CustomMessageChanged (fixtureId, userId, customMessage) -> (fixtureId, rvn, userId, customMessage) |> OnCustomMessageChanged |> agent.Post
+                | CustomMessageRemoved fixtureId -> (fixtureId, rvn) |> OnCustomMessageRemoved |> agent.Post
             | SquadsRead squadsRead -> squadsRead |> OnSquadsRead |> agent.Post
             | SquadEventWritten (_, squadEvent) ->
                 match squadEvent with

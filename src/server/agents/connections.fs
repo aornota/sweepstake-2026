@@ -574,9 +574,9 @@ type Connections () =
                             error |> Error |> logResult source (sprintf "%A" >> Some) })
                     do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
                     return! managingConnections serverStarted connectionDic signedInUserDic
-                | UiAuthMsg (jwt, UiAuthNewsMsg (CreatePostCmd (postId, postType, messageText))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
+                | UiAuthMsg (jwt, UiAuthNewsMsg (CreatePostCmd (postId, message))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
                     let source = "CreatePostCmd"
-                    sprintf "%s (%A %A) when managingConnections (%i connection/s) (%i signed-in user/s)" source postId postType connectionDic.Count signedInUserDic.Count |> Verbose |> log
+                    sprintf "%s (%A) when managingConnections (%i connection/s) (%i signed-in user/s)" source postId connectionDic.Count signedInUserDic.Count |> Verbose |> log
                     let fWithConnection = (fun (_, (auditUserId, _)) -> async {
                         let result =
                             if debugFakeError () then sprintf "Fake %s error -> %A" source jwt |> OtherError |> OtherAuthCmdError |> Error
@@ -586,7 +586,7 @@ type Connections () =
                             | Ok userTokens ->
                                 match userTokens.CreatePostToken with
                                 | Some createPostToken ->
-                                    (createPostToken, auditUserId, postId, postType, messageText) |> Entities.News.news.HandleCreatePostCmdAsync
+                                    (createPostToken, auditUserId, postId, message) |> Entities.News.news.HandleCreatePostCmdAsync
                                 | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
                             | Error error -> error |> Error |> thingAsync
                         let serverMsg = result |> CreatePostCmdResult |> ServerNewsMsg
@@ -594,7 +594,7 @@ type Connections () =
                         result |> logResult source (sprintf "%A" >> Some) }) // note: log success/failure here (rather than assuming that calling code will do so)
                     do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
                     return! managingConnections serverStarted connectionDic signedInUserDic
-                | UiAuthMsg (jwt, UiAuthNewsMsg (ChangePostCmd (postId, currentRvn, messageText))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
+                | UiAuthMsg (jwt, UiAuthNewsMsg (ChangePostCmd (postId, currentRvn, message))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
                     let source = "ChangePostCmd"
                     sprintf "%s for (%A %A) when managingConnections (%i connection/s) (%i signed-in user/s)" source postId currentRvn connectionDic.Count signedInUserDic.Count |> Verbose |> log
                     let fWithConnection = (fun (_, (auditUserId, _)) -> async {
@@ -606,7 +606,7 @@ type Connections () =
                             | Ok userTokens ->
                                 match userTokens.EditOrRemovePostToken with
                                 | Some editOrRemovePostToken ->
-                                    (editOrRemovePostToken, auditUserId, postId, currentRvn, messageText) |> Entities.News.news.HandleChangePostCmdAsync
+                                    (editOrRemovePostToken, auditUserId, postId, currentRvn, message) |> Entities.News.news.HandleChangePostCmdAsync
                                 | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
                             | Error error -> error |> Error |> thingAsync
                         let serverMsg = result |> ChangePostCmdResult |> ServerNewsMsg
@@ -630,6 +630,66 @@ type Connections () =
                                 | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
                             | Error error -> error |> Error |> thingAsync
                         let serverMsg = result |> RemovePostCmdResult |> ServerNewsMsg
+                        do! (connectionDic, signedInUserDic) |> sendMsg serverMsg [ connectionId ]
+                        result |> logResult source (sprintf "%A" >> Some) }) // note: log success/failure here (rather than assuming that calling code will do so)
+                    do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
+                    return! managingConnections serverStarted connectionDic signedInUserDic
+                | UiAuthMsg (jwt, UiAuthNewsMsg (AddCustomMessageCmd (fixtureId, currentRvn, customMessage))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
+                    let source = "AddCustomMessageCmd"
+                    sprintf "%s for (%A %A) when managingConnections (%i connection/s) (%i signed-in user/s)" source fixtureId currentRvn connectionDic.Count signedInUserDic.Count |> Verbose |> log
+                    let fWithConnection = (fun (_, (auditUserId, _)) -> async {
+                        let result =
+                            if debugFakeError () then sprintf "Fake %s error -> %A" source jwt |> OtherError |> OtherAuthCmdError |> Error
+                            else signedInUserDic |> tokensForAuthCmdApi source true auditUserId jwt // note: if successful, updates SignedInUser.LastApi (and broadcasts UserActivity)
+                        let! result =
+                            match result with
+                            | Ok userTokens ->
+                                match userTokens.CreatePostToken with
+                                | Some createPostToken ->
+                                    (createPostToken, auditUserId, fixtureId, currentRvn, customMessage) |> Entities.Fixtures.fixtures.HandleAddCustomMessageCmd
+                                | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
+                            | Error error -> error |> Error |> thingAsync
+                        let serverMsg = result |> AddCustomMessageCmdResult |> ServerNewsMsg
+                        do! (connectionDic, signedInUserDic) |> sendMsg serverMsg [ connectionId ]
+                        result |> logResult source (sprintf "%A" >> Some) }) // note: log success/failure here (rather than assuming that calling code will do so)
+                    do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
+                    return! managingConnections serverStarted connectionDic signedInUserDic
+                | UiAuthMsg (jwt, UiAuthNewsMsg (ChangeCustomMessageCmd (fixtureId, currentRvn, customMessage))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
+                    let source = "ChangeCustomMessageCmd"
+                    sprintf "%s for (%A %A) when managingConnections (%i connection/s) (%i signed-in user/s)" source fixtureId currentRvn connectionDic.Count signedInUserDic.Count |> Verbose |> log
+                    let fWithConnection = (fun (_, (auditUserId, _)) -> async {
+                        let result =
+                            if debugFakeError () then sprintf "Fake %s error -> %A" source jwt |> OtherError |> OtherAuthCmdError |> Error
+                            else signedInUserDic |> tokensForAuthCmdApi source true auditUserId jwt // note: if successful, updates SignedInUser.LastApi (and broadcasts UserActivity)
+                        let! result =
+                            match result with
+                            | Ok userTokens ->
+                                match userTokens.EditOrRemovePostToken with
+                                | Some editOrRemovePostToken ->
+                                    (editOrRemovePostToken, auditUserId, fixtureId, currentRvn, customMessage) |> Entities.Fixtures.fixtures.HandleChangeCustomMessageCmd
+                                | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
+                            | Error error -> error |> Error |> thingAsync
+                        let serverMsg = result |> ChangeCustomMessageCmdResult |> ServerNewsMsg
+                        do! (connectionDic, signedInUserDic) |> sendMsg serverMsg [ connectionId ]
+                        result |> logResult source (sprintf "%A" >> Some) }) // note: log success/failure here (rather than assuming that calling code will do so)
+                    do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
+                    return! managingConnections serverStarted connectionDic signedInUserDic
+                | UiAuthMsg (jwt, UiAuthNewsMsg (RemoveCustomMessageCmd (fixtureId, currentRvn))) -> // TODO-SOON: Switch to "non-async" (cf. ProcessDraftCmd &c.)...
+                    let source = "RemoveCustomMessageCmd"
+                    sprintf "%s for (%A %A) when managingConnections (%i connection/s) (%i signed-in user/s)" source fixtureId currentRvn connectionDic.Count signedInUserDic.Count |> Verbose |> log
+                    let fWithConnection = (fun (_, (auditUserId, _)) -> async {
+                        let result =
+                            if debugFakeError () then sprintf "Fake %s error -> %A" source jwt |> OtherError |> OtherAuthCmdError |> Error
+                            else signedInUserDic |> tokensForAuthCmdApi source true auditUserId jwt // note: if successful, updates SignedInUser.LastApi (and broadcasts UserActivity)
+                        let! result =
+                            match result with
+                            | Ok userTokens ->
+                                match userTokens.EditOrRemovePostToken with
+                                | Some editOrRemovePostToken ->
+                                    (editOrRemovePostToken, auditUserId, fixtureId, currentRvn) |> Entities.Fixtures.fixtures.HandleRemoveCustomMessageCmd
+                                | None -> NotAuthorized |> AuthCmdAuthznError |> Error |> thingAsync
+                            | Error error -> error |> Error |> thingAsync
+                        let serverMsg = result |> RemoveCustomMessageCmdResult |> ServerNewsMsg
                         do! (connectionDic, signedInUserDic) |> sendMsg serverMsg [ connectionId ]
                         result |> logResult source (sprintf "%A" >> Some) }) // note: log success/failure here (rather than assuming that calling code will do so)
                     do! (connectionDic, signedInUserDic) |> ifSignedInSession source connectionId fWithConnection
