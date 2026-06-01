@@ -57,25 +57,14 @@ let private renderAutoFixtureHeader theme squadDic (fixture:Fixture) = [
 _**16**_ points for **jem** (Ollie Watkins goal and man-of-the-match; Dutch yellow cards); _**13**_ points for **nourdine** (Xavi Simons goal and yellow card; Cole Palmer assist); _**9**_ points each for **rob** (English win, less yellow cards) and **rosie** (Harry Kane penalty); _**-2**_ points for **will** (Bukayo Saka yellow card); and _**-4**_ points for **highnam** (Jude Bellingham yellow card; Virgil van Dijk yellow card).
 *)
 
-// TODO-2026: Include team / player score event details...
-
 let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squadDic:SquadDic) (fixture:Fixture) = [
     let plusOrMinus (points:int<point>) =
         if points > 0<point> then sprintf "+%i" points |> bold
         else if points = 0<point> then "0"
         else sprintf "%i" points |> italic
-    let cardsText (cards:(Card * int<point>) list) =
-        let points = cards |> List.sumBy snd
-        let yellowCount = cards |> List.filter (fun (card, _) -> match card with | Yellow | SecondYellow -> true | Red -> false) |> List.length
-        let redCount = cards |> List.filter (fun (card, _) -> match card with | Yellow | SecondYellow -> false | Red -> true) |> List.length
-        let text =
-            match yellowCount, redCount with
-            | 1, 0 -> "yellow card"
-            | 0, 1 -> "red card"
-            | _, 0 -> "yellow cards"
-            | 0, _ -> "red cards"
-            | _ -> "yellow and red cards"
-        sprintf "%s (%s)" text (plusOrMinus points)
+    let cardsText card count =
+        let text = match card with | Yellow -> "yellow" | SecondYellow -> "second yellow" | Red -> "red"
+        if count = 1 then sprintf "%s card" text else sprintf "%s cards" text
     let teamScoreEventLines (items:(Squad * TeamScoreEvent * int<point>) list) =
         let lines =
             [
@@ -90,9 +79,10 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
                 | cardItems ->
                     yield!
                         cardItems
-                        |> List.groupBy (fun (squad, _, _) -> squad)
-                        |> List.map (fun (squad, items) ->
-                            let text = items |> List.map (fun (_, card, points) -> card, points) |> cardsText
+                        |> List.groupBy (fun (squad, card, _) -> squad, card)
+                        |> List.map (fun ((squad, card), items) ->
+                            let points = items |> List.sumBy (fun (_, _, points) -> points)
+                            let text = sprintf "%s (%s)" (cardsText card items.Length) (plusOrMinus points)
                             squad, text)
             ]
         lines
@@ -102,9 +92,33 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
             let concatenated = items |> List.map snd |> concatenate
             sprintf "%s: %s" squadName concatenated)
         |> List.sort
+    let playerScoreEventLines (items:(Player * (PlayerScoreEvent * int<point>) list) list) =
+        let items =
+            items
+            |> List.map (fun (player, subItems) -> subItems |> List.map (fun (playerScoreEvent, points) -> player, playerScoreEvent, points))
+            |> List.collect id
+        let lines =
+            [
+                // TODO-NMB: Other PlayerScoreEvents...
 
-    // TODO-NMB...let playerScoreEventLines...
-
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | Card card -> Some (player, card, points) | _ -> None) with
+                | [] -> ()
+                | cardItems ->
+                    yield!
+                        cardItems
+                        |> List.groupBy (fun (player, card, _) -> player, card)
+                        |> List.map (fun ((player, card), items) ->
+                            let points = items |> List.sumBy (fun (_, _, points) -> points)
+                            let text = sprintf "%s (%s)" (cardsText card items.Length) (plusOrMinus points)
+                            player, text)
+            ]
+        lines
+        |> List.groupBy fst
+        |> List.map (fun (player, items) ->
+            let (PlayerName playerName) = player.PlayerName
+            let concatenated = items |> List.map snd |> concatenate
+            sprintf "%s: %s" playerName concatenated)
+        |> List.sort
     let nothingToSeeHere = "Nothing to see here"
     let teams, _ = fixture |> confirmedFixtureDetails squadDic
     let lines = [
@@ -156,10 +170,7 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
                         |> List.groupBy (fun (userId, _, _) -> userId)
                         |> List.map (fun (userId, items) ->
                             let points = items |> List.sumBy (fun (_, _, subItems) -> subItems |> List.sumBy snd)
-
-                            // TODO-NMB: Player and PlayerScoreEvent descriptions...
-                            let playerScoreEventLines = []
-
+                            let playerScoreEventLines = items |> List.map (fun (_, player, subItems) -> player, subItems) |> playerScoreEventLines
                             userId, points, playerScoreEventLines)
                     yield!
                         userTeamScores @ userPlayerScores
@@ -193,10 +204,10 @@ let private renderAutoFixtureCommon theme fixtureId fixture userDic fixtureDic s
     let semantic, infoOrWarning, detailsEntered =
         match fixtureStatus with
         | Some NotStarted | Some NotConfirmed | None -> None, None, false
-        | Some DetailsPending -> Some Dark, Some RESULT_PENDING, false
+        | Some DetailsPending -> Some Info, Some RESULT_PENDING, false
         | Some DetailsOverdue -> Some Warning, Some RESULT_OVERDUE, false
         | Some (DetailsMissing _) -> Some Warning, Some RESULT_HAS_MISSING_DETAILS, false
-        | Some DetailsEntered -> Some Success, None, true
+        | Some DetailsEntered -> Some Dark, None, true
     let children = [
         let kickOffText =
 #if TICK

@@ -83,8 +83,8 @@ Target.create "restore-ui" (fun _ ->
 
 Target.create "run" (fun _ ->
     let server = async { runDotNet "watch run" serverDir }
-    let client = async { runDotNet (sprintf "fable %s --define DEBUG --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
-    //let client = async { runDotNet (sprintf "fable %s --define DEBUG --define TICK --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
+    //let client = async { runDotNet (sprintf "fable %s --define DEBUG --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
+    let client = async { runDotNet (sprintf "fable %s --define DEBUG --define TICK --run webpack serve" uiDir) __SOURCE_DIRECTORY__ }
     let browser = async {
         do! Async.Sleep 2500
         openBrowser "http://localhost:8080" }
