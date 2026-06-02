@@ -53,10 +53,6 @@ let private renderAutoFixtureHeader theme squadDic (fixture:Fixture) = [
     yield lines |> concatenateLines |> Markdown |> notificationContentFromMarkdown theme
 ]
 
-(*
-_**16**_ points for **jem** (Ollie Watkins goal and man-of-the-match; Dutch yellow cards); _**13**_ points for **nourdine** (Xavi Simons goal and yellow card; Cole Palmer assist); _**9**_ points each for **rob** (English win, less yellow cards) and **rosie** (Harry Kane penalty); _**-2**_ points for **will** (Bukayo Saka yellow card); and _**-4**_ points for **highnam** (Jude Bellingham yellow card; Virgil van Dijk yellow card).
-*)
-
 let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squadDic:SquadDic) (fixture:Fixture) = [
     let plusOrMinus (points:int<point>) =
         if points > 0<point> then sprintf "+%i" points |> bold
@@ -64,7 +60,7 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
         else sprintf "%i" points |> italic
     let cardsText card count =
         let text = match card with | Yellow -> "yellow" | SecondYellow -> "second yellow" | Red -> "red"
-        if count = 1 then sprintf "%s card" text else sprintf "%s cards" text
+        if count = 1 then sprintf "%s card" text else sprintf "%i %s cards" count text
     let teamScoreEventLines (items:(Squad * TeamScoreEvent * int<point>) list) =
         let lines =
             [
@@ -93,14 +89,67 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
             sprintf "%s: %s" squadName concatenated)
         |> List.sort
     let playerScoreEventLines (items:(Player * (PlayerScoreEvent * int<point>) list) list) =
+        let thingText singular (points:int<point> list) =
+            let points = points |> List.sum
+            sprintf "%s (%s)" singular (plusOrMinus points)
+        let thingsText singular plural (points:int<point> list) =
+            let count, points = points.Length, points |> List.sum
+            if count = 1 then sprintf "%s (%s)" singular (plusOrMinus points) else sprintf "%i %s (%s)" count plural (plusOrMinus points)
         let items =
             items
             |> List.map (fun (player, subItems) -> subItems |> List.map (fun (playerScoreEvent, points) -> player, playerScoreEvent, points))
             |> List.collect id
         let lines =
             [
-                // TODO-NMB: Other PlayerScoreEvents...
-
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | GoalScored | PenaltyScored -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | goalItems ->
+                    yield!
+                        goalItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingsText "goal" "goals")
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | GoalAssisted -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | assistItems ->
+                    yield!
+                        assistItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingsText "assist" "assists")
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | CleanSheetKept -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | cleanSheetItems ->
+                    yield!
+                        cleanSheetItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingText "clean sheet") // should be at most one per PLayer
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | PenaltySaved -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | saveItems ->
+                    yield!
+                        saveItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingsText "penalty saved" "penalties saved")
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | ManOfTheMatchAwarded -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | motmItems ->
+                    yield!
+                        motmItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingText "man-of-the-match") // should be at most one per PLayer
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | OwnGoalScored -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | ownGoalItems ->
+                    yield!
+                        ownGoalItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingsText "own goal" "own goals")
+                match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | PenaltyMissed -> Some (player, points) | _ -> None) with
+                | [] -> ()
+                | missedItems ->
+                    yield!
+                        missedItems
+                        |> List.groupBy fst
+                        |> List.map (fun (player, points) -> player, points |> List.map snd |> thingsText "penalty missed" "penalties missed")
                 match items |> List.choose (fun (player, playerScoreEvent, points) -> match playerScoreEvent with | Card card -> Some (player, card, points) | _ -> None) with
                 | [] -> ()
                 | cardItems ->

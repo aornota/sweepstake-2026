@@ -14,7 +14,7 @@ The **team/coach** will score (or lose) points for:
 (If a player receives a second yellow card in a match, the two yellow cards will be scored as a red card instead; however, if a player receives a yellow card followed by a "straight"
 red card, both cards will be scored.)
 
-Where multiple possible scores are given above, the score will depend on whether the team and their opponents are in the top 24 seeds:
+Where multiple possible scores are given above, the score will depend on whether the team and their opponents are in the top 12 seeds:
 + if the team **is** a top 12 seed but their opponents are **not**, the **lowest** score will apply
 + if the team is **not** a top 12 seed but their opponents **are**, the **highest** score will apply
 + if **both** teams are top 12 seeds - or if **neither** team is - the **middle** score will apply
