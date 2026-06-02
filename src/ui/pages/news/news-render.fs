@@ -228,8 +228,7 @@ let private renderAutoFixtureContent theme (userDic:UserDic) detailsEntered (squ
                             let points = items |> List.map (fun (_, points, _) -> points) |> List.sum
                             let eventLines = items |> List.map (fun (_, _, eventLines) -> eventLines) |> List.collect id
                             userId |> userName userDic, points, eventLines)
-                        |> List.sortBy (fun (_, points, _) -> points)
-                        |> List.rev
+                        |> List.sortBy (fun (userName, points, _) -> -points, userName)
                         |> List.map (fun (UserName userName, points, eventLines) ->
                             [
                                 yield sprintf "- %s points for %s" (points |> plusOrMinus) (userName |> bold)
