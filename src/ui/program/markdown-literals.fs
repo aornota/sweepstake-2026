@@ -50,7 +50,7 @@ Note that outfield players can also score "goalkeeper" points if they end up pla
 amount of minutes, the points will be shared. A penalty will only be considered as "saved" if the goalkeeper touched the ball.)
 
 Information about assists and such will be nicked from <https://www.whoscored.com/>, though man-of-the-match will be taken from the official FIFA announcement (sponsored by some mediocre
-American been or other).
+American beer or other).
 
 As always, points can only be scored for goals / penalties / assists / &c. during normal time and extra time. **Penalty shootouts do not contribute to the scoring** [except to the extent
 that they determine who wins the match] - well, unless a player manages to get booked or sent-off during the shootout. Stranger things have happened..."""
