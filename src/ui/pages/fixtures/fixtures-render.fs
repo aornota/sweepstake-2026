@@ -630,6 +630,13 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
                                 | Group group when groups |> List.contains group -> match fixture.MatchResult with | Some _ -> false | None -> true
                                 | _ -> false)
                         dependsOnPending.Length = 0
+                    | Winner (RoundOf32 matchNumber) ->
+                        let dependsOnPending =
+                            fixtureDic |> List.ofSeq |> List.filter (fun (KeyValue (_, fixture)) ->
+                                match fixture.Stage with
+                                | RoundOf32 otherMatchNumber when otherMatchNumber = matchNumber -> match fixture.MatchResult with | Some _ -> false | None -> true
+                                | _ -> false)
+                        dependsOnPending.Length = 0
                     | Winner (RoundOf16 matchNumber) ->
                         let dependsOnPending =
                             fixtureDic |> List.ofSeq |> List.filter (fun (KeyValue (_, fixture)) ->
