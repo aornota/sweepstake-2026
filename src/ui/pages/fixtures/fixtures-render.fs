@@ -27,6 +27,15 @@ let private possibleParticipants unconfirmed (fixtureDic:FixtureDic) (squadDic:S
         squadDic |> List.ofSeq |> List.choose (fun (KeyValue (squadId, squad)) -> if squad.Group = group then squadId |> Some else None)
     | ThirdPlace groups ->
         squadDic |> List.ofSeq |> List.choose (fun (KeyValue (squadId, squad)) -> if groups |> List.contains squad.Group then squadId |> Some else None)
+    | Winner (RoundOf32 matchNumber) ->
+        fixtureDic |> List.ofSeq |> List.map (fun (KeyValue (_, fixture)) ->
+            match fixture.Stage with
+            | RoundOf32 otherMatchNumber when otherMatchNumber = matchNumber ->
+                match fixture.HomeParticipant, fixture.AwayParticipant with
+                | Confirmed homeSquadId, Confirmed awaySquadId -> [ homeSquadId ; awaySquadId ]
+                | _ -> []
+            | _ -> [])
+            |> List.collect id
     | Winner (RoundOf16 matchNumber) ->
         fixtureDic |> List.ofSeq |> List.map (fun (KeyValue (_, fixture)) ->
             match fixture.Stage with
