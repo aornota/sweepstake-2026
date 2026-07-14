@@ -54,6 +54,15 @@ let private possibleParticipants unconfirmed (fixtureDic:FixtureDic) (squadDic:S
                 | _ -> []
             | _ -> [])
             |> List.collect id
+    | Loser (SemiFinal semiFinalOrdinal) ->
+        fixtureDic |> List.ofSeq |> List.map (fun (KeyValue (_, fixture)) ->
+            match fixture.Stage with
+            | SemiFinal otherOrdinal when otherOrdinal = semiFinalOrdinal ->
+                match fixture.HomeParticipant, fixture.AwayParticipant with
+                | Confirmed homeSquadId, Confirmed awaySquadId -> [ homeSquadId ; awaySquadId ]
+                | _ -> []
+            | _ -> [])
+            |> List.collect id
     | Winner (SemiFinal semiFinalOrdinal) ->
         fixtureDic |> List.ofSeq |> List.map (fun (KeyValue (_, fixture)) ->
             match fixture.Stage with
@@ -658,6 +667,13 @@ let private renderFixtures (useDefaultTheme, currentFixtureFilter, fixtureDic:Fi
                             fixtureDic |> List.ofSeq |> List.filter (fun (KeyValue (_, fixture)) ->
                                 match fixture.Stage with
                                 | QuarterFinal otherOrdinal when otherOrdinal = quarterFinalOrdinal -> match fixture.MatchResult with | Some _ -> false | None -> true
+                                | _ -> false)
+                        dependsOnPending.Length = 0
+                    | Loser (SemiFinal semiFinalOrdinal) ->
+                        let dependsOnPending =
+                            fixtureDic |> List.ofSeq |> List.filter (fun (KeyValue (_, fixture)) ->
+                                match fixture.Stage with
+                                | SemiFinal otherOrdinal when otherOrdinal = semiFinalOrdinal -> match fixture.MatchResult with | Some _ -> false | None -> true
                                 | _ -> false)
                         dependsOnPending.Length = 0
                     | Winner (SemiFinal semiFinalOrdinal) ->
